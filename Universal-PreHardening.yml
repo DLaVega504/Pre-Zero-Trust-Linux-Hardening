@@ -1,6 +1,7 @@
 ---
-- name: Universal Interactive Turn-Key Linux Pre-Hardening Framework (Stage 1)
-  hosts: localhost
+- name: "Universal Interactive Turn-Key Linux Pre-Hardening Framework (Stage 1)"
+  hosts: "localhost"
+  connection: "local"
   become: true
   gather_facts: true
 
@@ -33,6 +34,7 @@
     - name: vault_user_password
       prompt: "Enter the account password for the regular user"
       private: true
+
   vars:
     os_crypt_name: "crypt_root"
     vault_crypt_name: "secure_vault"
@@ -40,54 +42,44 @@
     vault_passphrase: "{{ vault_secure_vault_passphrase }}"
     perf_mount_opts: "noatime,space_cache=v2,compress=zstd:1"
     swap_mount_opts: "noatime,space_cache=v2,nodatacow"
-
   pre_tasks:
-    - name: Validate that user input falls strictly within the 10GB to 30GB maximum bounds
+    - name: "VALIDATION | Ensure Vault size constraints match architecture rules"
       ansible.builtin.assert:
         that:
-          - vault_size_input | int >= 10
-          - vault_size_input | int <= 30
+          - "vault_size_input | int >= 10"
+          - "vault_size_input | int <= 30"
         msg: "FATAL ERROR: Vault allocation size must be specified between 10 and 30 GB max."
 
-    - name: Dynamically identify the primary physical disk block device path
+    - name: "RECON | Dynamically detect the absolute target physical installation drive"
       ansible.builtin.set_fact:
-        target_disk: "/dev/{{ ansible_facts['devices'].keys() | select('match', '^(sda|vda|nvme[0-9]n[0-9]|sdm|vd[a-z]|xvd[a-z])$') | first }}"
-      failed_when: target_disk is not defined
+        target_disk: "/dev/{{ ansible_facts['devices'].keys() | select('match', '^(nvme[0-9]n[0-9]|vda|sda|vd[a-z])$') | first }}"
+      failed_when: "target_disk is not defined"
 
-    - name: Detect active host target firmware configuration mode (BIOS vs UEFI)
+    - name: "RECON | Detect active motherboard boot firmware schema (BIOS vs UEFI)"
       ansible.builtin.stat:
-        path: /sys/firmware/efi
+        path: "/sys/firmware/efi"
       register: efi_check
 
-    - name: Establish global firmware status variable maps and dynamic storage math slices
+    - name: "RECON | Map environment path layout syntax strings"
       ansible.builtin.set_fact:
         is_uefi: "{{ efi_check.stat.exists }}"
         p_suffix: "{{ 'p' if 'nvme' in target_disk else '' }}"
         vault_slice_start: "-{{ vault_size_input }}GiB"
 
-    # =========================================================================
-    # TRIPLE-CHECKED THREE-TIER HYBRID SWAP RATIO CALCULATION ENGINE
-    # =========================================================================
-    - name: Calculate variable swap file sizing threshold footprint bounds from memory capacity facts
+    - name: "RECON | Compute adaptive raw physical storage allocations"
       ansible.builtin.set_fact:
         stage1_swap_mb: >-
           {{
-            (ansible_facts['memtotal_mb'] | int * 2.0) | int
-            if (ansible_facts['memtotal_mb'] | int <= 4096)
-            else (ansible_facts['memtotal_mb'] | int * 1.5) | int
-            if (ansible_facts['memtotal_mb'] | int > 4096 and ansible_facts['memtotal_mb'] | int < 8192)
-            else 4096
+            (ansible_facts['memtotal_mb'] | int * 2) if (ansible_facts['memtotal_mb'] | int <= 4096) else
+            (ansible_facts['memtotal_mb'] | int * 1.5) | int if (ansible_facts['memtotal_mb'] | int > 4096 and ansible_facts['memtotal_mb'] | int < 8192) else
+            4096
           }}
 
-    - name: Ingest multi-distribution security baseline mappings file
+    - name: "Ingest multi-distribution security baseline mappings file"
       ansible.builtin.include_vars:
-        file: vars_mapping.yml
-        name: distro_blueprint
-
-    # =========================================================================
-    # PLATFORM EXTENDED VARIABLE MATCHING MATRIX (PREVENTS LOOKUP ATTRIBUTE ERRORS)
-    # =========================================================================
-    - name: Map host platform operational security variables for Arch Linux
+        file: "vars_mapping.yml"
+        name: "distro_blueprint"
+    - name: "RECON | Map host platform operational security variables for Arch Linux"
       ansible.builtin.set_fact:
         core_packages: "{{ distro_blueprint.arch_vars.core_packages }}"
         arpwatch_user: "{{ distro_blueprint.arch_vars.arpwatch_user }}"
@@ -97,7 +89,7 @@
         clamav_service: "{{ distro_blueprint.arch_vars.clamav_service }}"
       when: ansible_facts['os_family'] == 'Archlinux'
 
-    - name: Map host platform operational security variables for Debian
+    - name: "RECON | Map host platform operational security variables for Debian"
       ansible.builtin.set_fact:
         core_packages: "{{ distro_blueprint.debian_vars.core_packages }}"
         arpwatch_user: "{{ distro_blueprint.debian_vars.arpwatch_user }}"
@@ -107,7 +99,7 @@
         clamav_service: "{{ distro_blueprint.debian_vars.clamav_service }}"
       when: ansible_facts['os_family'] == 'Debian'
 
-    - name: Map host platform operational security variables for Fedora (RedHat)
+    - name: "RECON | Map host platform operational security variables for Fedora (RedHat)"
       ansible.builtin.set_fact:
         core_packages: "{{ distro_blueprint.fedora_vars.core_packages }}"
         arpwatch_user: "{{ distro_blueprint.fedora_vars.arpwatch_user }}"
@@ -117,7 +109,7 @@
         clamav_service: "{{ distro_blueprint.fedora_vars.clamav_service }}"
       when: ansible_facts['os_family'] == 'RedHat'
 
-    - name: Map host platform operational security variables for openSUSE (Suse)
+    - name: "RECON | Map host platform operational security variables for openSUSE (Suse)"
       ansible.builtin.set_fact:
         core_packages: "{{ distro_blueprint.suse_vars.core_packages }}"
         arpwatch_user: "{{ distro_blueprint.suse_vars.arpwatch_user }}"
@@ -127,119 +119,124 @@
         clamav_service: "{{ distro_blueprint.suse_vars.clamav_service }}"
       when: ansible_facts['os_family'] == 'Suse'
   tasks:
-    - name: Output discovered turn-key hardware topology to execution logs
+    - name: "LOGGING | Output calculated storage schema boundaries"
       ansible.builtin.debug:
         msg: 
-          - "Target Block Device Identified: {{ target_disk }}"
-          - "System Boot Mode Configuration: {{ 'UEFI Execution Framework' if is_uefi else 'Legacy BIOS Engine' }}"
-          - "Dynamic Vault Size Target Allocated (sda2): {{ vault_size_input }} GB"
+          - "Identified Block Storage Device Target: {{ target_disk }}"
+          - "System Boot Mode Infrastructure: {{ 'UEFI Boot Matrix' if is_uefi else 'Legacy BIOS Mode' }}"
+          - "Calculated Dynamic Swap Target Path Size: {{ stage1_swap_mb }} MB"
 
-    - name: Write a modern clean GPT partition layout ledger to the target drive
+    # =========================================================================
+    # PARTITION BOUNDARY PROVISIONING (GPT LAYOUT)
+    # =========================================================================
+    - name: "STORAGE | Clear old structures and initialize clean GPT layout signature"
       community.general.parted:
         device: "{{ target_disk }}"
-        label: gpt
+        label: "gpt"
         number: 1
-        state: present
+        state: "present"
 
-    # =========================================================================
-    # INTENDED TWO-PARTITION DYNAMIC BOUNDARY MATRIX (sda1=MAIN OS, sda2=VAULT)
-    # =========================================================================
-    - name: Provision primary slice for Main OS and Boot arrays (sda1)
+    - name: "STORAGE | Allocate Primary Block Segment Partition (Main OS / boot)"
       community.general.parted:
         device: "{{ target_disk }}"
         number: 1
         part_start: "1MiB"
         part_end: "{{ vault_slice_start }}"
         flags: "{{ ['boot', 'esp'] if is_uefi else ['bios_grub'] }}"
-        state: present
+        state: "present"
 
-    - name: Provision requested size boundary slice for independent Vault allocations (sda2)
+    - name: "STORAGE | Allocate Secondary Block Segment Partition (Vault Containment)"
       community.general.parted:
         device: "{{ target_disk }}"
         number: 2
         part_start: "{{ vault_slice_start }}"
         part_end: "100%"
-        state: present
-
+        state: "present"
     # =========================================================================
-    # CRYPTOGRAPHIC STRUCTURE & SYSTEM FILE POOL INITIALIZATION
+    # CRYPTOGRAPHIC VOLUME CONFIGURATION (LUKS KEY-MAPPING)
     # =========================================================================
-    - name: Initialize high-security LUKS1 encryption wrapper on sda1 for GRUB compatibility
+    - name: "LUKS | Form structural high-security LUKS1 volume on partition 1"
       ansible.builtin.shell: |
         echo -n "$OS_PASS" | cryptsetup luksFormat --type luks1 --batch-mode {{ target_disk }}{{ p_suffix }}1 -
       environment:
         OS_PASS: "{{ os_passphrase }}"
-      when: not ansible_check_mode
+      when: "not ansible_check_mode"
       no_log: true
 
-    - name: Unlock and expose main root operating system encrypted channel pathway
+    - name: "LUKS | Unlock target root crypt volume context map"
       ansible.builtin.shell: |
         echo -n "$OS_PASS" | cryptsetup open {{ target_disk }}{{ p_suffix }}1 {{ os_crypt_name }} -
       environment:
         OS_PASS: "{{ os_passphrase }}"
-      when: not ansible_check_mode
+      when: "not ansible_check_mode"
       no_log: true
 
-    - name: Format the primary root operating volume container as a Btrfs pool array
-      ansible.builtin.command: mkfs.btrfs -f /dev/mapper/{{ os_crypt_name }}
-      when: not ansible_check_mode
+    # =========================================================================
+    # BTRFS SUBVOLUME ARCHITECTURE & POOL SEGREGATION
+    # =========================================================================
+    - name: "BTRFS | Format unlocked primary mapper volume layout as Btrfs"
+      ansible.builtin.filesystem:
+        fstype: "btrfs"
+        dev: "/dev/mapper/{{ os_crypt_name }}"
+        force: true
+      when: "not ansible_check_mode"
 
-    - name: Build temporary workspace target mounting pathways
+    - name: "BTRFS | Build directory target point for raw allocation mapping"
       ansible.builtin.file:
-        path: /mnt/btrfs_root
-        state: directory
-        mode: '0755'
+        path: "/mnt/btrfs_root"
+        state: "directory"
+        mode: "0755"
 
-    - name: Temporarily mount raw Btrfs root array layout to slice out system layers
+    - name: "BTRFS | Mount temporary root array container layout"
       ansible.posix.mount:
-        path: /mnt/btrfs_root
+        path: "/mnt/btrfs_root"
         src: "/dev/mapper/{{ os_crypt_name }}"
-        fstype: btrfs
-        state: mounted
-      when: not ansible_check_mode
+        fstype: "btrfs"
+        state: "mounted"
+      when: "not ansible_check_mode"
 
-    - name: Programmatically slice out all core requested OS subvolume layers
+    - name: "BTRFS | Programmatically slice out stratified system subvolumes"
       ansible.builtin.command: "btrfs subvolume create /mnt/btrfs_root/{{ item }}"
       loop: [ '@', '@home', '@snapshots', '@log', '@cache', '@libvirt', '@docker', '@swap' ]
-      when: not ansible_check_mode
+      when: "not ansible_check_mode"
 
-    - name: Safely unmount temporary baseline array allocation pathway
+    - name: "BTRFS | Safely drop temporary assembly map mount context point"
       ansible.posix.mount:
-        path: /mnt/btrfs_root
-        state: unmounted
-      when: not ansible_check_mode
+        path: "/mnt/btrfs_root"
+        state: "unmounted"
+      when: "not ansible_check_mode"
 
-    - name: Clean up temporary structural allocation directories
+    - name: "BTRFS | Clean temporary workspace target allocation directories"
       ansible.builtin.file:
-        path: /mnt/btrfs_root
-        state: absent
+        path: "/mnt/btrfs_root"
+        state: "absent"
     # =========================================================================
-    # TARGET WORKSPACE ASSEMBLY & STRUCTURAL SUBVOLUME MOUNT TREES
+    # OPERATIONAL DIRECTORY STRUCTURE STACKING & REAL PATH ASSEMBLY
     # =========================================================================
-    - name: Mount optimized execution target System Root subvolume path (@)
+    - name: "STORAGE | Mount optimized master system root subvolume target (@)"
       ansible.posix.mount:
-        path: /mnt/target
+        path: "/mnt/target"
         src: "/dev/mapper/{{ os_crypt_name }}"
-        fstype: btrfs
+        fstype: "btrfs"
         opts: "subvol=@,{{ perf_mount_opts }}"
-        state: mounted
-      when: not ansible_check_mode
+        state: "mounted"
+      when: "not ansible_check_mode"
 
-    - name: Instantiate internal structural nested deployment system directories
+    - name: "STORAGE | Map physical directory system nodes onto target"
       ansible.builtin.file:
         path: "/mnt/target/{{ item }}"
-        state: directory
-        mode: '0755'
+        state: "directory"
+        mode: "0755"
       loop: [ 'home', '.snapshots', 'secure', 'swapfile_mount', 'boot', 'boot/efi', 'var', 'var/log', 'var/cache', 'var/lib', 'var/lib/libvirt', 'var/lib/docker' ]
-      when: not ansible_check_mode
+      when: "not ansible_check_mode"
 
-    - name: Systematically mount stratified target subvolumes into directory trees
+    - name: "STORAGE | Stratify execution subvolumes directly into structural target branches"
       ansible.posix.mount:
         path: "/mnt/target/{{ item.path }}"
         src: "/dev/mapper/{{ os_crypt_name }}"
-        fstype: btrfs
+        fstype: "btrfs"
         opts: "subvol={{ item.subvol }},{{ perf_mount_opts }}"
-        state: mounted
+        state: "mounted"
       loop:
         - { path: "home", subvol: "@home" }
         - { path: ".snapshots", subvol: "@snapshots" }
@@ -247,63 +244,69 @@
         - { path: "var/log", subvol: "@log" }
         - { path: "var/lib/libvirt", subvol: "@libvirt" }
         - { path: "var/lib/docker", subvol: "@docker" }
-      when: not ansible_check_mode
+      when: "not ansible_check_mode"
 
-    - name: Mount specialized uncompressed storage block layer for swap allocations
+    # =========================================================================
+    # UNCOMPRESSED MEMORY TUNING BACKEND (BTRFS NATIVE SWAP SPEC)
+    # =========================================================================
+    - name: "STORAGE | Mount isolated subvolume block container for raw swap layout allocation"
       ansible.posix.mount:
-        path: /mnt/target/swapfile_mount
+        path: "/mnt/target/swapfile_mount"
         src: "/dev/mapper/{{ os_crypt_name }}"
-        fstype: btrfs
+        fstype: "btrfs"
         opts: "subvol=@swap,{{ swap_mount_opts }}"
-        state: mounted
-      when: not ansible_check_mode
+        state: "mounted"
+      when: "not ansible_check_mode"
 
-    - name: Create empty placeholder inside the uncompressed swap subvolume zone
+    - name: "STORAGE | Allocate empty block target index file container"
       ansible.builtin.file:
-        path: /mnt/target/swapfile_mount/swapfile
-        state: touch
-        owner: root
-        group: root
-        mode: '0600'
-      when: not ansible_check_mode
+        path: "/mnt/target/swapfile_mount/swapfile"
+        state: "touch"
+        owner: "root"
+        group: "root"
+        mode: "0600"
+      when: "not ansible_check_mode"
 
-    - name: Disable Copy-on-Write (CoW) metrics on the raw 0-byte file structure
-      ansible.builtin.command: chattr +C /mnt/target/swapfile_mount/swapfile
-      when: not ansible_check_mode
+    - name: "STORAGE | Disable Copy-on-Write (CoW) metrics on the swap structure"
+      ansible.builtin.command: "chattr +C /mnt/target/swapfile_mount/swapfile"
+      when: "not ansible_check_mode"
 
-    - name: Pre-allocate target space blocks for Option B ratio swap execution limits
+    - name: "STORAGE | Fill real system data bit allocations for fallback hybrid swap size"
       ansible.builtin.command: "dd if=/dev/zero of=/mnt/target/swapfile_mount/swapfile bs=1M count={{ stage1_swap_mb }}"
-      when: not ansible_check_mode
+      when: "not ansible_check_mode"
 
-    - name: Format the uncompressed target block structure as an operational swap space
-      ansible.builtin.command: mkswap /mnt/target/swapfile_mount/swapfile
-      when: not ansible_check_mode
+    - name: "STORAGE | Format swap file tracking infrastructure signatures"
+      ansible.builtin.command: "mkswap /mnt/target/swapfile_mount/swapfile"
+      when: "not ansible_check_mode"
 
-    - name: Link root filesystem paths directly to the isolated swap subvolume container
+    - name: "STORAGE | Link root workspace paths to the real subvolume swapfile target location"
       ansible.builtin.file:
-        src: /swapfile_mount/swapfile
-        dest: /mnt/target/swapfile
-        state: link
+        src: "/swapfile_mount/swapfile"
+        dest: "/mnt/target/swapfile"
+        state: "link"
         force: true
-      when: not ansible_check_mode
+      when: "not ansible_check_mode"
 
-    - name: Bind mount target EFI partition block directly if host booted via UEFI
+    - name: "STORAGE | Bind block target mount for physical EFI partition if active"
       ansible.posix.mount:
-        path: /mnt/target/boot/efi
+        path: "/mnt/target/boot/efi"
         src: "{{ target_disk }}{{ p_suffix }}1"
-        fstype: vfat
+        fstype: "vfat"
         opts: "defaults"
-        state: mounted
+        state: "mounted"
       when: 
-        - is_uefi
-        - not ansible_check_mode
-    - name: Execute Core Operating System Image Provisioning (Arch Linux Module)
-      ansible.builtin.command: pacstrap -K /mnt/target base base-devel linux linux-lts linux-hardened linux-firmware btrfs-progs cryptsetup
+        - "is_uefi"
+        - "not ansible_check_mode"
+    # =========================================================================
+    # PHASE-DRIVEN DISTRIBUTION DEPLOYMENT MODULES
+    # =========================================================================
+    - name: "BOOTSTRAP | Execute Base OS Environment Image Provisioning (Arch Linux Module)"
+      ansible.builtin.command: pacstrap -K /mnt/target base base-devel linux linux-lts linux-hardened linux-firmware btrfs-progs cryptsetup nano vi
       when: 
-        - ansible_facts['os_family'] == 'Archlinux'
-        - not ansible_check_mode
+        - "ansible_facts['os_family'] == 'Archlinux'"
+        - "not ansible_check_mode"
 
-    - name: Execute Core Operating System Image Provisioning (Debian Module)
+    - name: "BOOTSTRAP | Execute Base OS Environment Image Provisioning (Debian Module)"
       block:
         - name: Deploy Debootstrap utility onto host runner context
           ansible.builtin.package:
@@ -312,80 +315,78 @@
         - name: Pull clean core image layers onto targeted root structure
           ansible.builtin.command: debootstrap stable /mnt/target http://debian.org
       when: 
-        - ansible_facts['os_family'] == 'Debian'
-        - not ansible_check_mode
+        - "ansible_facts['os_family'] == 'Debian'"
+        - "not ansible_check_mode"
 
-    - name: Execute Core Operating System Image Provisioning (Fedora Module)
-      ansible.builtin.command: "dnf --installroot=/mnt/target --releasever=40 groupinstall -y core"
+    - name: "BOOTSTRAP | Execute Base OS Environment Image Provisioning (Fedora Module)"
+      ansible.builtin.command: dnf --installroot=/mnt/target --releasever=40 groupinstall -y core
       when: 
-        - ansible_facts['os_family'] == 'RedHat'
-        - not ansible_check_mode
+        - "ansible_facts['os_family'] == 'RedHat'"
+        - "not ansible_check_mode"
 
-    - name: Execute Core Operating System Image Provisioning (openSUSE Module)
-      ansible.builtin.command: "zypper --root /mnt/target install -y patterns-openfilesystems-base core"
+    - name: "BOOTSTRAP | Execute Base OS Environment Image Provisioning (openSUSE Module)"
+      ansible.builtin.command: zypper --root /mnt/target install -y patterns-openfilesystems-base core btrfs-progs
       when: 
-        - ansible_facts['os_family'] == 'Suse'
-        - not ansible_check_mode
-
+        - "ansible_facts['os_family'] == 'Suse'"
+        - "not ansible_check_mode"
     # =========================================================================
-    # INTERACTIVE VAULT INITIALIZATION & AUTOMATED KEYFILE SLOTS (sda2)
+    # CRYPTOGRAPHIC SECURE VAULT CONTAINER PROVISIONS (LUKS2 + ARGON2ID)
     # =========================================================================
-    - name: Initialize modern LUKS2 container wrapper using the typed Vault backup passphrase
+    - name: "VAULT | Form enterprise LUKS2 container using primary Argon2id algorithms on partition 2"
       ansible.builtin.shell: |
         echo -n "$VAULT_PASS" | cryptsetup luksFormat --type luks2 --pbkdf argon2id --batch-mode {{ target_disk }}{{ p_suffix }}2 -
       environment:
         VAULT_PASS: "{{ vault_passphrase }}"
       no_log: true
-      when: not ansible_check_mode
+      when: "not ansible_check_mode"
 
-    - name: Ensure parent local directory path exists inside target root
+    - name: "VAULT | Ensure secure encryption key storage directory exists"
       ansible.builtin.file:
-        path: /mnt/target/etc/secure
-        state: directory
-        owner: root
-        group: root
-        mode: '0700'
-      when: not ansible_check_mode
+        path: "/mnt/target/etc/secure"
+        state: "directory"
+        owner: "root"
+        group: "root"
+        mode: "0700"
+      when: "not ansible_check_mode"
 
-    - name: Generate random 32-byte physical security keyfile inside root mount
-      ansible.builtin.command: dd if=/dev/urandom of=/mnt/target/etc/secure/vault.key bs=1 count=32
-      when: not ansible_check_mode
+    - name: "VAULT | Generate a random 32-byte cryptographically secure hardware system vault key"
+      ansible.builtin.command: "dd if=/dev/urandom of=/mnt/target/etc/secure/vault.key bs=1 count=32"
+      when: "not ansible_check_mode"
 
-    - name: Restrict file read access signatures strictly to system root account
+    - name: "VAULT | Lock structural file signatures strictly to root level privileges"
       ansible.builtin.file:
-        path: /mnt/target/etc/secure/vault.key
-        owner: root
-        group: root
-        mode: '0400'
-      when: not ansible_check_mode
+        path: "/mnt/target/etc/secure/vault.key"
+        owner: "root"
+        group: "root"
+        mode: "0400"
+      when: "not ansible_check_mode"
 
-    - name: Inject the generated system keyfile into secondary slot of vault partition sda2
+    - name: "VAULT | Inject the generated system keyfile into secondary slot of vault partition"
       ansible.builtin.shell: |
         echo -ne "$VAULT_PASS" | cryptsetup luksAddKey --batch-mode {{ target_disk }}{{ p_suffix }}2 /mnt/target/etc/secure/vault.key -
       environment:
         VAULT_PASS: "{{ vault_passphrase }}"
       no_log: true
-      when: not ansible_check_mode
+      when: "not ansible_check_mode"
 
-    - name: Unlock vault mapper channel utilizing the newly registered system keyfile
-      ansible.builtin.command: >
-        cryptsetup open {{ target_disk }}{{ p_suffix }}2 {{ vault_crypt_name }} --key-file /mnt/target/etc/secure/vault.key
-      when: not ansible_check_mode
+    - name: "VAULT | Unlock vault mapper channel utilizing the newly registered system keyfile"
+      ansible.builtin.command: "cryptsetup open {{ target_disk }}{{ p_suffix }}2 {{ vault_crypt_name }} --key-file /mnt/target/etc/secure/vault.key"
+      when: "not ansible_check_mode"
 
-    - name: Extract the target hardware UUID parameter block from vault partition sda2
-      ansible.builtin.command: blkid -s UUID -o value {{ target_disk }}{{ p_suffix }}2
-      register: vault_uuid_raw
-      when: not ansible_check_mode
+    - name: "VAULT | Extract the hardware UUID parameter block from vault partition 2"
+      ansible.builtin.command: "blkid -s UUID -o value {{ target_disk }}{{ p_suffix }}2"
+      register: "vault_uuid_raw"
+      when: "not ansible_check_mode"
 
-    - name: Format the exposed vault target mapped space as standard Ext4 storage
+    - name: "VAULT | Format the exposed vault target mapped space as standard Ext4 storage"
       ansible.builtin.filesystem:
-        fstype: ext4
+        fstype: "ext4"
         dev: "/dev/mapper/{{ vault_crypt_name }}"
-      when: not ansible_check_mode
+      when: "not ansible_check_mode"
 
-    - name: Instantly lock the vault container to secure files descriptors from RAM
+    - name: "VAULT | Securely close the open device mapping to clear tracking descriptors from active RAM"
       ansible.builtin.command: "cryptsetup close {{ vault_crypt_name }}"
-      when: not ansible_check_mode
+      when: "not ansible_check_mode"
     # =========================================================================
     # SYSTEM CONFIGURATION MAPPINGS & CHROOT INTERFACES
     # =========================================================================
@@ -407,7 +408,7 @@
         mode: '0644'
       when: not ansible_check_mode
 
-    - name: Dynamically generate static file system configuration mapping table ledger
+    - name: "SYSTEM CONFIG | Dynamically forge file system runtime fstab layout ledger table"
       ansible.builtin.copy:
         content: |
           # /etc/fstab: Static file system information.
@@ -421,23 +422,23 @@
           /dev/mapper/{{ os_crypt_name }}   /swapfile_mount btrfs   subvol=@swap,{{ swap_mount_opts }} 0 0
           /swapfile_mount/swapfile          none            swap    sw,pri=10 0 0
           {% if is_uefi %}/dev/mapper/{{ os_crypt_name }}               /boot/efi       btrfs   subvol=@ 0 0{% endif %}
-        dest: /mnt/target/etc/fstab
-        owner: root
-        group: root
-        mode: '0644'
-      when: not ansible_check_mode
+        dest: "/mnt/target/etc/fstab"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      when: "not ansible_check_mode"
 
-    - name: Configure the crypttab block engine map to automatically pass the keyfile at boot
+    - name: "SYSTEM CONFIG | Generate crypttab map ledger to open hardware devices on boot sequence"
       ansible.builtin.copy:
         content: |
           # <target name> <source device> <key file> <options>
           {{ os_crypt_name }} {{ target_disk }}{{ p_suffix }}1 none luks,discard
           {{ vault_crypt_name }} UUID={{ vault_uuid_raw.stdout | default('CHECK_MODE_UUID_STUB') }} /etc/secure/vault.key luks,discard
-        dest: /mnt/target/etc/crypttab
-        owner: root
-        group: root
-        mode: '0644'
-      when: not ansible_check_mode
+        dest: "/mnt/target/etc/crypttab"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      when: "not ansible_check_mode"
 
     # =========================================================================
     # SYSTEM UTILITY BINARY WRAPPER DEPLOYMENT (vault open / close)
@@ -520,7 +521,6 @@
     - name: Define chroot utility invocation macro strings based on platform distribution
       ansible.builtin.set_fact:
         chroot_cmd: "{{ 'arch-chroot /mnt/target' if ansible_facts['os_family'] == 'Archlinux' else 'chroot /mnt/target' }}"
-
     - name: Download firmware-dependent runtime boot loader modules inside chroot context
       ansible.builtin.command: >
         {{ chroot_cmd }} {{
@@ -532,6 +532,9 @@
         }}
       when: not ansible_check_mode
 
+    # =========================================================================
+    # USER PROVISIONING ENGINE & ADMINISTRATIVE IDENTITIES
+    # =========================================================================
     - name: Set administrative user security identities and system privilege escalation
       ansible.builtin.shell: |
         echo "root:{{ vault_root_password }}" | {{ chroot_cmd }} chpasswd
@@ -542,20 +545,21 @@
         chmod 0440 /mnt/target/etc/sudoers.d/{{ target_username }}
       no_log: true
       when: not ansible_check_mode
+
     - name: Inject critical crypto modules and hooks into mkinitcpio configuration (Arch Linux)
       ansible.builtin.lineinfile:
         path: /mnt/target/etc/mkinitcpio.conf
         regexp: '^HOOKS='
         line: 'HOOKS=(base udev autodetect modconf kms keyboard keymap consolefont block encrypt btrfs filesystems fsck)'
       when: 
-        - ansible_facts['os_family'] == 'Archlinux'
-        - not ansible_check_mode
+        - "ansible_facts['os_family'] == 'Archlinux'"
+        - "not ansible_check_mode"
 
     - name: Compile hardened initramfs boot images inside targeted runtime environment (Arch Linux)
       ansible.builtin.command: arch-chroot /mnt/target mkinitcpio -P
       when: 
-        - ansible_facts['os_family'] == 'Archlinux'
-        - not ansible_check_mode
+        - "ansible_facts['os_family'] == 'Archlinux'"
+        - "not ansible_check_mode"
 
     - name: Inject critical encryption parameters into core GRUB configurations
       ansible.builtin.lineinfile:
@@ -578,8 +582,8 @@
     - name: Regenerate initramfs boot images with structural encryption hooks (Debian)
       ansible.builtin.command: chroot /mnt/target update-initramfs -u -k all
       when: 
-        - ansible_facts['os_family'] == 'Debian'
-        - not ansible_check_mode
+        - "ansible_facts['os_family'] == 'Debian'"
+        - "not ansible_check_mode"
 
     # =========================================================================
     # PHASE 6: SAFE TEARDOWN PIPELINE
@@ -589,19 +593,19 @@
       loop: [ '/dev/pts', '/dev', '/proc', '/sys' ]
       when: not ansible_check_mode
 
-    - name: Run a clean unmount tear down to clear RAM storage caches safely
+    - name: "CLEANUP | Run a systematic unmount sweep to flush storage memory buffers cleanly"
       ansible.posix.mount:
         path: "{{ item }}"
-        state: unmounted
+        state: "unmounted"
       loop:
-        - /mnt/target/boot/efi
-        - /mnt/target/var/lib/docker
-        - /mnt/target/var/lib/libvirt
-        - /mnt/target/var/log
-        - /mnt/target/var/cache
-        - /mnt/target/.snapshots
-        - /mnt/target/home
-        - /mnt/target/swapfile_mount
-        - /mnt/target
-      when: not ansible_check_mode
+        - "/mnt/target/boot/efi"
+        - "/mnt/target/var/lib/docker"
+        - "/mnt/target/var/lib/libvirt"
+        - "/mnt/target/var/log"
+        - "/mnt/target/var/cache"
+        - "/mnt/target/.snapshots"
+        - "/mnt/target/home"
+        - "/mnt/target/swapfile_mount"
+        - "/mnt/target"
+      when: "not ansible_check_mode"
 
