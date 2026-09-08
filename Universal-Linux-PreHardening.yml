@@ -3,46 +3,73 @@
   hosts: "localhost"
   connection: "local"
   become: true
-  gather_facts: true
-
-  # =========================================================================
-  # INTERACTIVE SECURE TERMINAL PROMPTS (DYNAMIC CONSTRAINTS ENGINE)
-  # =========================================================================
-  vars_prompt:
-    - name: vault_size_input
-      prompt: "Enter the size for the independent Vault partition in GB (Must be between 10 and 30)"
-      default: "10"
-      private: false
-
-    - name: vault_os_root_passphrase
-      prompt: "Enter Master Passphrase for Main OS Partition (Typed at boot)"
-      private: true
-
-    - name: vault_secure_vault_passphrase
-      prompt: "Enter Master Passphrase for Secure Vault Partition (Backup Text Password)"
-      private: true
-
-    - name: vault_root_password
-      prompt: "Enter System Administrative ROOT Password"
-      private: true
-
-    - name: target_username
-      prompt: "Enter the account username for the primary regular user"
-      default: "vega"
-      private: false
-
-    - name: vault_user_password
-      prompt: "Enter the account password for the regular user"
-      private: true
+  gather_facts: false  # SAFE FROM SYNTAX FREEZES: Instantly bypasses initialization sweeps
 
   vars:
     os_crypt_name: "crypt_root"
     vault_crypt_name: "secure_vault"
-    os_passphrase: "{{ vault_os_root_passphrase }}"
-    vault_passphrase: "{{ vault_secure_vault_passphrase }}"
     perf_mount_opts: "noatime,space_cache=v2,compress=zstd:1"
     swap_mount_opts: "noatime,space_cache=v2,nodatacow"
-  pre_tasks:
+    
+    # Secure Runtime Variable Registries
+    target_disk: "{{ disk_prompt.user_input | default('/dev/sda', true) }}"
+    vault_size_input: "{{ vault_size_prompt.user_input | default('10', true) }}"
+    os_passphrase: "{{ os_pass_prompt.user_input | default('', true) }}"
+    vault_passphrase: "{{ vault_pass_prompt.user_input | default('', true) }}"
+    vault_root_password: "{{ root_pass_prompt.user_input | default('', true) }}"
+    target_username: "{{ user_prompt.user_input | default('vega', true) }}"
+    vault_user_password: "{{ user_pass_prompt.user_input | default('', true) }}"
+  tasks:
+    # =========================================================================
+    # INTERACTIVE TURN-KEY INPUT PIPELINE (SAFE FROM SYNTAX CHECKS)
+    # =========================================================================
+    - name: "PROMPT | Gather target disk selection"
+      ansible.builtin.pause:
+        prompt: "[?] Enter absolute block device target to partition (e.g., /dev/sda)"
+      register: disk_prompt
+
+    - name: "PROMPT | Gather secure vault sizing metrics"
+      ansible.builtin.pause:
+        prompt: "Enter the size for the independent Vault partition in GB (Must be between 10 and 30)"
+      register: vault_size_prompt
+
+    - name: "PROMPT | Gather Main OS Passphrase"
+      ansible.builtin.pause:
+        prompt: "Enter Master Passphrase for Main OS Partition (Typed at boot)"
+        echo: false
+      register: os_pass_prompt
+
+    - name: "PROMPT | Gather Vault Passphrase"
+      ansible.builtin.pause:
+        prompt: "Enter Master Passphrase for Secure Vault Partition"
+        echo: false
+      register: vault_pass_prompt
+
+    - name: "PROMPT | Gather ROOT Administrative Password"
+      ansible.builtin.pause:
+        prompt: "Enter System Administrative ROOT Password"
+        echo: false
+      register: root_pass_prompt
+
+    - name: "PROMPT | Gather Account Username"
+      ansible.builtin.pause:
+        prompt: "Enter the account username for the primary regular user [vega]"
+      register: user_prompt
+
+    - name: "PROMPT | Gather Account Password"
+      ansible.builtin.pause:
+        prompt: "Enter the account password for the regular user"
+        echo: false
+      register: user_pass_prompt
+    # =========================================================================
+    # CONTROLLED TELEMETRY INITIALIZATION
+    # =========================================================================
+    - name: "RECON | Gather targeted runtime platform hardware footprint metadata"
+      ansible.builtin.setup:
+        gather_subset:
+          - "hardware"
+          - "distribution"
+
     - name: "VALIDATION | Ensure Vault size constraints match architecture rules"
       ansible.builtin.assert:
         that:
@@ -50,10 +77,11 @@
           - "vault_size_input | int <= 30"
         msg: "FATAL ERROR: Vault allocation size must be specified between 10 and 30 GB max."
 
-    - name: "RECON | Dynamically detect the absolute target physical installation drive"
-      ansible.builtin.set_fact:
-        target_disk: "/dev/{{ ansible_facts['devices'].keys() | select('match', '^(nvme[0-9]n[0-9]|vda|sda|vd[a-z])$') | first }}"
-      failed_when: "target_disk is not defined"
+    - name: "RECON | Validate targeted installation disk path exists on system"
+      ansible.builtin.stat:
+        path: "{{ target_disk }}"
+      register: disk_verify
+      failed_when: "not disk_verify.stat.exists or not disk_verify.stat.isblk"
 
     - name: "RECON | Detect active motherboard boot firmware schema (BIOS vs UEFI)"
       ansible.builtin.stat:
@@ -79,6 +107,7 @@
       ansible.builtin.include_vars:
         file: "vars_mapping.yml"
         name: "distro_blueprint"
+
     - name: "RECON | Map host platform operational security variables for Arch Linux"
       ansible.builtin.set_fact:
         core_packages: "{{ distro_blueprint.arch_vars.core_packages }}"
@@ -118,7 +147,6 @@
         aide_db_path: "{{ distro_blueprint.suse_vars.aide_db_path }}"
         clamav_service: "{{ distro_blueprint.suse_vars.clamav_service }}"
       when: ansible_facts['os_family'] == 'Suse'
-  tasks:
     - name: "LOGGING | Output calculated storage schema boundaries"
       ansible.builtin.debug:
         msg: 
@@ -156,21 +184,18 @@
     # CRYPTOGRAPHIC VOLUME CONFIGURATION (LUKS KEY-MAPPING)
     # =========================================================================
     - name: "LUKS | Form structural high-security LUKS1 volume on partition 1"
-      ansible.builtin.shell: |
-        echo -n "$OS_PASS" | cryptsetup luksFormat --type luks1 --batch-mode {{ target_disk }}{{ p_suffix }}1 -
-      environment:
-        OS_PASS: "{{ os_passphrase }}"
+      ansible.builtin.shell: "cryptsetup luksFormat --type luks1 --batch-mode {{ target_disk }}{{ p_suffix }}1 -"
+      args:
+        stdin: "{{ os_passphrase }}"
       when: "not ansible_check_mode"
       no_log: true
 
     - name: "LUKS | Unlock target root crypt volume context map"
-      ansible.builtin.shell: |
-        echo -n "$OS_PASS" | cryptsetup open {{ target_disk }}{{ p_suffix }}1 {{ os_crypt_name }} -
-      environment:
-        OS_PASS: "{{ os_passphrase }}"
+      ansible.builtin.shell: "cryptsetup open {{ target_disk }}{{ p_suffix }}1 {{ os_crypt_name }} -"
+      args:
+        stdin: "{{ os_passphrase }}"
       when: "not ansible_check_mode"
       no_log: true
-
     # =========================================================================
     # BTRFS SUBVOLUME ARCHITECTURE & POOL SEGREGATION
     # =========================================================================
@@ -187,12 +212,8 @@
         state: "directory"
         mode: "0755"
 
-    - name: "BTRFS | Mount temporary root array container layout"
-      ansible.posix.mount:
-        path: "/mnt/btrfs_root"
-        src: "/dev/mapper/{{ os_crypt_name }}"
-        fstype: "btrfs"
-        state: "mounted"
+    - name: "BTRFS | Mount temporary root array container layout (Host FSTAB Protected)"
+      ansible.builtin.command: "mount /dev/mapper/{{ os_crypt_name }} /mnt/btrfs_root"
       when: "not ansible_check_mode"
 
     - name: "BTRFS | Programmatically slice out stratified system subvolumes"
@@ -201,9 +222,7 @@
       when: "not ansible_check_mode"
 
     - name: "BTRFS | Safely drop temporary assembly map mount context point"
-      ansible.posix.mount:
-        path: "/mnt/btrfs_root"
-        state: "unmounted"
+      ansible.builtin.command: "umount /mnt/btrfs_root"
       when: "not ansible_check_mode"
 
     - name: "BTRFS | Clean temporary workspace target allocation directories"
@@ -214,12 +233,9 @@
     # OPERATIONAL DIRECTORY STRUCTURE STACKING & REAL PATH ASSEMBLY
     # =========================================================================
     - name: "STORAGE | Mount optimized master system root subvolume target (@)"
-      ansible.posix.mount:
-        path: "/mnt/target"
-        src: "/dev/mapper/{{ os_crypt_name }}"
-        fstype: "btrfs"
-        opts: "subvol=@,{{ perf_mount_opts }}"
-        state: "mounted"
+      ansible.builtin.command: "mount -o subvol=@,{{ perf_mount_opts }} /dev/mapper/{{ os_crypt_name }} /mnt/target"
+      register: base_mount_cmd
+      failed_when: "base_mount_cmd.rc != 0 and 'already mounted' not in base_mount_cmd.stderr"
       when: "not ansible_check_mode"
 
     - name: "STORAGE | Map physical directory system nodes onto target"
@@ -231,12 +247,7 @@
       when: "not ansible_check_mode"
 
     - name: "STORAGE | Stratify execution subvolumes directly into structural target branches"
-      ansible.posix.mount:
-        path: "/mnt/target/{{ item.path }}"
-        src: "/dev/mapper/{{ os_crypt_name }}"
-        fstype: "btrfs"
-        opts: "subvol={{ item.subvol }},{{ perf_mount_opts }}"
-        state: "mounted"
+      ansible.builtin.command: "mount -o subvol={{ item.subvol }},{{ perf_mount_opts }} /dev/mapper/{{ os_crypt_name }} /mnt/target/{{ item.path }}"
       loop:
         - { path: "home", subvol: "@home" }
         - { path: ".snapshots", subvol: "@snapshots" }
@@ -250,12 +261,7 @@
     # UNCOMPRESSED MEMORY TUNING BACKEND (BTRFS NATIVE SWAP SPEC)
     # =========================================================================
     - name: "STORAGE | Mount isolated subvolume block container for raw swap layout allocation"
-      ansible.posix.mount:
-        path: "/mnt/target/swapfile_mount"
-        src: "/dev/mapper/{{ os_crypt_name }}"
-        fstype: "btrfs"
-        opts: "subvol=@swap,{{ swap_mount_opts }}"
-        state: "mounted"
+      ansible.builtin.command: "mount -o subvol=@swap,{{ swap_mount_opts }} /dev/mapper/{{ os_crypt_name }} /mnt/target/swapfile_mount"
       when: "not ansible_check_mode"
 
     - name: "STORAGE | Allocate empty block target index file container"
@@ -288,12 +294,7 @@
       when: "not ansible_check_mode"
 
     - name: "STORAGE | Bind block target mount for physical EFI partition if active"
-      ansible.posix.mount:
-        path: "/mnt/target/boot/efi"
-        src: "{{ target_disk }}{{ p_suffix }}1"
-        fstype: "vfat"
-        opts: "defaults"
-        state: "mounted"
+      ansible.builtin.command: "mount {{ target_disk }}{{ p_suffix }}1 /mnt/target/boot/efi"
       when: 
         - "is_uefi"
         - "not ansible_check_mode"
@@ -329,14 +330,14 @@
       when: 
         - "ansible_facts['os_family'] == 'Suse'"
         - "not ansible_check_mode"
+
     # =========================================================================
     # CRYPTOGRAPHIC SECURE VAULT CONTAINER PROVISIONS (LUKS2 + ARGON2ID)
     # =========================================================================
     - name: "VAULT | Form enterprise LUKS2 container using primary Argon2id algorithms on partition 2"
-      ansible.builtin.shell: |
-        echo -n "$VAULT_PASS" | cryptsetup luksFormat --type luks2 --pbkdf argon2id --batch-mode {{ target_disk }}{{ p_suffix }}2 -
-      environment:
-        VAULT_PASS: "{{ vault_passphrase }}"
+      ansible.builtin.shell: "cryptsetup luksFormat --type luks2 --pbkdf argon2id --batch-mode {{ target_disk }}{{ p_suffix }}2 -"
+      args:
+        stdin: "{{ vault_passphrase }}"
       no_log: true
       when: "not ansible_check_mode"
 
@@ -362,10 +363,9 @@
       when: "not ansible_check_mode"
 
     - name: "VAULT | Inject the generated system keyfile into secondary slot of vault partition"
-      ansible.builtin.shell: |
-        echo -ne "$VAULT_PASS" | cryptsetup luksAddKey --batch-mode {{ target_disk }}{{ p_suffix }}2 /mnt/target/etc/secure/vault.key -
-      environment:
-        VAULT_PASS: "{{ vault_passphrase }}"
+      ansible.builtin.shell: "cryptsetup luksAddKey --batch-mode {{ target_disk }}{{ p_suffix }}2 /mnt/target/etc/secure/vault.key -"
+      args:
+        stdin: "{{ vault_passphrase }}"
       no_log: true
       when: "not ansible_check_mode"
 
@@ -437,18 +437,14 @@
         dest: "/mnt/target/etc/crypttab"
         owner: "root"
         group: "root"
-        mode: "0644"
+        mode: "0440"
       when: "not ansible_check_mode"
 
-    # =========================================================================
-    # SYSTEM UTILITY BINARY WRAPPER DEPLOYMENT (vault open / close)
-    # =========================================================================
     - name: Deploy custom encrypted storage layout administration wrapper binary to system paths
       ansible.builtin.copy:
         dest: /mnt/target/usr/local/bin/vault
         content: |
           #!/usr/bin/env bash
-          # /usr/local/bin/vault - Hardened Secure Vault Automation Wrapper
           set -euo pipefail
           
           VAULT_UUID="{{ vault_uuid_raw.stdout | default('CHECK_MODE_UUID_STUB') }}"
@@ -458,7 +454,6 @@
           
           if [[ $EUID -ne 0 ]]; then
              echo "[-] Error: This operation requires administrative privileges." >&2
-             echo "    Please run using: sudo vault open  OR  sudo vault close" >&2
              exit 1
           fi
           
@@ -466,61 +461,42 @@
               if [[ -b "/dev/mapper/${MAPPER_NAME}" ]]; then
                   echo "[!] Notification: Cryptographic mapper '${MAPPER_NAME}' is already active."
               else
-                  echo "[+] Unlocking secure vault layer via hardware UUID..."
                   cryptsetup open "UUID=${VAULT_UUID}" "${MAPPER_NAME}" --key-file "${KEY_FILE}"
               fi
           
               if mountpoint -q "${MOUNT_POINT}"; then
-                  echo "[✔] Done: Vault is already mounted safely at ${MOUNT_POINT}."
+                  echo "[✔] Done: Vault is already mounted safely."
               else
-                  echo "[+] Mounting storage layer..."
                   mkdir -p "${MOUNT_POINT}"
                   mount -v "/dev/mapper/${MAPPER_NAME}" "${MOUNT_POINT}"
-                  echo "[✔] Success: Vault successfully mounted at ${MOUNT_POINT}"
               fi
           }
           
           close_vault() {
-              echo "[-] Initiating teardown protocols..."
-              
               if mountpoint -q "${MOUNT_POINT}"; then
-                  echo "[+] Clearing filesystem file descriptor locks..."
                   fuser -km "${MOUNT_POINT}" || true
                   sleep 0.5
-                  
-                  echo "[+] Forcefully tearing down all mount layers..."
                   umount -R -v "${MOUNT_POINT}"
-                  echo "[✔] Filesystem safely unmounted."
               fi
           
               if [[ -b "/dev/mapper/${MAPPER_NAME}" ]]; then
                   cryptsetup luksClose "${MAPPER_NAME}"
-                  echo "[✔] Vault closed. Decryption keys completely flushed from RAM."
-              else
-                  echo "[!] Notification: Cryptographic mapper was already closed."
               fi
           }
           
           case "${1:-}" in
-              open)
-                  open_vault
-                  ;;
-              close)
-                  close_vault
-                  ;;
-              *)
-                  echo "Usage: vault {open|close}" >&2
-                  exit 2
-                  ;;
+              open) open_vault ;;
+              close) close_vault ;;
+              *) exit 2 ;;
           esac
         owner: root
         group: root
         mode: '0755'
       when: not ansible_check_mode
-
     - name: Define chroot utility invocation macro strings based on platform distribution
       ansible.builtin.set_fact:
         chroot_cmd: "{{ 'arch-chroot /mnt/target' if ansible_facts['os_family'] == 'Archlinux' else 'chroot /mnt/target' }}"
+
     - name: Download firmware-dependent runtime boot loader modules inside chroot context
       ansible.builtin.command: >
         {{ chroot_cmd }} {{
@@ -594,9 +570,7 @@
       when: not ansible_check_mode
 
     - name: "CLEANUP | Run a systematic unmount sweep to flush storage memory buffers cleanly"
-      ansible.posix.mount:
-        path: "{{ item }}"
-        state: "unmounted"
+      ansible.builtin.command: "umount {{ item }}"
       loop:
         - "/mnt/target/boot/efi"
         - "/mnt/target/var/lib/docker"
