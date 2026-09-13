@@ -3,7 +3,7 @@
   hosts: "localhost"
   connection: "local"
   become: true
-  gather_facts: false
+  gather_facts: true
 
   vars:
     os_crypt_name: "cryptroot"
@@ -58,6 +58,9 @@
         prompt: "Enter the account password for the regular user"
         echo: false
       register: user_pass_prompt
+    # =========================================================================
+    # PHASE 2: TELEMETRY & HARDWARE FOOTPRINT RECON
+    # =========================================================================
     - name: "RECON | Gather targeted runtime platform hardware footprint metadata"
       ansible.builtin.setup:
         gather_subset:
@@ -107,25 +110,32 @@
       ansible.builtin.set_fact:
         core_packages: "{{ distro_blueprint.arch_vars.core_packages }}"
         clamav_service: "{{ distro_blueprint.arch_vars.clamav_service }}"
+        admin_group: "wheel"
       when: "ansible_facts['os_family'] == 'Archlinux'"
 
     - name: "RECON | Map host platform operational security variables for Debian"
       ansible.builtin.set_fact:
         core_packages: "{{ distro_blueprint.debian_vars.core_packages }}"
         clamav_service: "{{ distro_blueprint.debian_vars.clamav_service }}"
+        admin_group: "sudo"
       when: "ansible_facts['os_family'] == 'Debian'"
 
     - name: "RECON | Map host platform operational security variables for Fedora (RedHat)"
       ansible.builtin.set_fact:
         core_packages: "{{ distro_blueprint.fedora_vars.core_packages }}"
         clamav_service: "{{ distro_blueprint.fedora_vars.clamav_service }}"
+        admin_group: "wheel"
       when: "ansible_facts['os_family'] == 'RedHat'"
 
     - name: "RECON | Map host platform operational security variables for openSUSE (Suse)"
       ansible.builtin.set_fact:
         core_packages: "{{ distro_blueprint.suse_vars.core_packages }}"
         clamav_service: "{{ distro_blueprint.suse_vars.clamav_service }}"
+        admin_group: "wheel"
       when: "ansible_facts['os_family'] == 'Suse'"
+    # =========================================================================
+    # PHASE 3: UNIVERSAL STORAGE WIPING & GEOMETRY ALLOCATION
+    # =========================================================================
     - name: "LOGGING | Output calculated storage schema boundaries"
       ansible.builtin.debug:
         msg: 
@@ -158,6 +168,9 @@
         fi
       become: true
       when: "not ansible_check_mode"
+    # =========================================================================
+    # PHASE 4: CRYPTOGRAPHIC DEVICE PARTITION LAYOUTS (LUKS1 vs LUKS2)
+    # =========================================================================
     - name: "LUKS | Establish volume partition indices for UEFI with Vault layout"
       ansible.builtin.set_fact:
         os_partition: "{{ target_disk }}{{ p_suffix }}2"
@@ -200,7 +213,7 @@
       no_log: true
       when: "not ansible_check_mode"
     # =========================================================================
-    # BASELINE FILE SYSTEM INSTALLATION TARGET
+    # PHASE 5: BASELINE FILE SYSTEM TARGET LAYOUT
     # =========================================================================
     - name: "BTRFS | Format unlocked primary mapper volume layout as clean Btrfs"
       ansible.builtin.filesystem:
@@ -214,7 +227,7 @@
       register: base_mount_cmd
       failed_when: "base_mount_cmd.rc != 0 and 'already mounted' not in base_mount_cmd.stderr"
       when: "not ansible_check_mode"
-    
+
     - name: "STORAGE | Map physical directory system nodes onto target"
       ansible.builtin.file:
         path: "/mnt/target/{{ item }}"
@@ -223,7 +236,7 @@
       loop: [ 'home', 'boot', 'boot/efi', 'etc', 'usr', 'usr/local', 'usr/local/bin', 'var', 'etc/secure' ]
       when: "not ansible_check_mode"
     # =========================================================================
-    # BASELINE SYSTEM MEMORY FALLBACK SWAP
+    # PHASE 6: BASELINE SYSTEM MEMORY FALLBACK SWAP
     # =========================================================================
     - name: "STORAGE | Allocate empty block target index file container for swap"
       ansible.builtin.file:
@@ -250,7 +263,7 @@
       ansible.builtin.command: "mkswap /mnt/target/swapfile"
       when: "not ansible_check_mode"
     # =========================================================================
-    # PHASE-DRIVEN DISTRIBUTION DEPLOYMENT MODULES
+    # PHASE 7: PHASE-DRIVEN DISTRIBUTION DEPLOYMENT MODULES
     # =========================================================================
     - name: "BOOTSTRAP | Execute Base OS Environment Image Provisioning (Arch Linux Module)"
       ansible.builtin.command: pacstrap -K /mnt/target base base-devel linux linux-lts linux-hardened linux-firmware btrfs-progs cryptsetup grub-btrfs snapper tuned intel-ucode xorg-server xfce4 xfce4-goodies lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings firewalld bluez bluez-utils pipewire pipewire-pulse pipewire-alsa pipewire-jack nano vi vim
@@ -282,7 +295,7 @@
         - "ansible_facts['os_family'] == 'Suse'"
         - "not ansible_check_mode"
     # =========================================================================
-    # CRYPTOGRAPHIC SECURE VAULT CONTAINER PROVISIONS (LUKS2 + ARGON2ID)
+    # PHASE 8: CONDITIONAL LUKS2 VAULT GENERATION
     # =========================================================================
     - name: "VAULT | Form enterprise LUKS2 container using primary Argon2id algorithms on partition 2"
       ansible.builtin.shell: "echo '{{ vault_passphrase }}' | cryptsetup luksFormat --type luks2 --pbkdf argon2id --batch-mode {{ vault_partition }}"
@@ -352,7 +365,7 @@
         - "not ansible_check_mode"
         - "has_vault | bool"
     # =========================================================================
-    # SYSTEM CONFIGURATION MAPPINGS & CHROOT INTERFACES
+    # PHASE 9: CHROOT SYSTEMS INTERFACES & RUNTIME DNS
     # =========================================================================
     - name: Bind essential virtual API kernel filesystems into the target node workspace
       ansible.builtin.command: "mount --bind {{ item.src }} /mnt/target{{ item.path }}"
@@ -371,6 +384,7 @@
         group: "root"
         mode: "0644"
       when: "not ansible_check_mode"
+
     - name: "SYSTEM CONFIG | Dynamically forge file system runtime fstab layout ledger table"
       ansible.builtin.copy:
         content: |
@@ -383,6 +397,7 @@
         group: "root"
         mode: "0644"
       when: "not ansible_check_mode"
+
     - name: "SYSTEM CONFIG | Generate crypttab map ledger to open hardware devices on boot sequence"
       ansible.builtin.copy:
         content: |
@@ -452,7 +467,7 @@
         - "not ansible_check_mode"
         - "has_vault | bool"
     # =========================================================================
-    # SYSTEM CONFIGURATION MAPPINGS & CHROOT INTERFACES
+    # PHASE 10: USER PROVISIONING & IDENTITY CONFIG
     # =========================================================================
     - name: Define chroot utility invocation macro strings based on platform distribution
       ansible.builtin.set_fact:
@@ -468,21 +483,39 @@
           'zypper install -y grub2-x86_64-efi efibootmgr NetworkManager sudo lightdm firewalld bluez pipewire patterns-xfce-xfce'
         }}
       when: "not ansible_check_mode"
-    # =========================================================================
-    # USER PROVISIONING ENGINE & ADMINISTRATIVE IDENTITIES
-    # =========================================================================
-    - name: Set administrative user security identities and system privilege escalation
-      ansible.builtin.shell: |
-        echo "root:{{ vault_root_password }}" | {{ chroot_cmd }} chpasswd
-        {{ chroot_cmd }} groupadd -g 1000 {{ target_username }} || true
-        {{ chroot_cmd }} useradd -u 1000 -g 1000 -m -G wheel,audio,video,optical,storage -s /bin/bash {{ target_username }} || true
-        echo "{{ target_username }}:{{ vault_user_password }}" | {{ chroot_cmd }} chpasswd
-        echo "{{ target_username }} ALL=(ALL:ALL) ALL" > /mnt/target/etc/sudoers.d/{{ target_username }}
-        chmod 0440 /mnt/target/etc/sudoers.d/{{ target_username }}
+
+    - name: "USER | Set administrative user root password"
+      ansible.builtin.shell: "echo 'root:{{ vault_root_password }}' | {{ chroot_cmd }} chpasswd"
       no_log: true
       when: "not ansible_check_mode"
+
+    - name: "USER | Register primary regular deployment group"
+      ansible.builtin.shell: "{{ chroot_cmd }} groupadd -g 1000 {{ target_username }} || true"
+      when: "not ansible_check_mode"
+
+    - name: "USER | Create primary account with native distribution privilege group"
+      ansible.builtin.shell: >
+        {{ chroot_cmd }} useradd -u 1000 -g 1000 -m 
+        -G {{ admin_group }},audio,video,optical,storage 
+        -s /bin/bash {{ target_username }} || true
+      when: "not ansible_check_mode"
+
+    - name: "USER | Commit primary regular user credential password"
+      ansible.builtin.shell: "echo '{{ target_username }}:{{ vault_user_password }}' | {{ chroot_cmd }} chpasswd"
+      no_log: true
+      when: "not ansible_check_mode"
+
+    - name: "VISUDO | Deploy clean drop-in privileges with absolute visudo syntax validation"
+      ansible.builtin.copy:
+        content: "{{ target_username }} ALL=(ALL:ALL) ALL"
+        dest: "/mnt/target/etc/sudoers.d/{{ target_username }}"
+        owner: "root"
+        group: "root"
+        mode: "0440"
+        validate: "visudo -cf %s"
+      when: "not ansible_check_mode"
     # =========================================================================
-    # PHASE-DRIVEN CRYPTO HOOKS & CONNECTOR INITIALIZATION
+    # PHASE 11: CRYPTO HOOKS & BOOT COMPILATION
     # =========================================================================
     - name: Generate the early userspace unlocking keyfile inside the encrypted container
       ansible.builtin.command: "dd bs=512 count=4 if=/dev/urandom of=/mnt/target/etc/secure/cryptroot.key"
@@ -508,7 +541,7 @@
         line: 'FILES=(/etc/secure/cryptroot.key)'
       when: 
         - "ansible_facts['os_family'] == 'Archlinux'"
-        - "not ansible_check_mode"  # <--- THIS IS THE FIX
+        - "not ansible_check_mode"
 
     - name: Inject critical crypto modules and hooks into mkinitcpio configuration (Arch Linux)
       ansible.builtin.lineinfile:
@@ -517,7 +550,7 @@
         line: 'HOOKS=(base udev autodetect modconf kms keyboard keymap consolefont block encrypt btrfs filesystems fsck)'
       when: 
         - "ansible_facts['os_family'] == 'Archlinux'"
-        - "not ansible_check_mode"  # <--- THIS IS THE FIX
+        - "not ansible_check_mode"
 
     - name: Inject early userspace keyfile extraction rules into Dracut profile trees (Fedora/openSUSE)
       ansible.builtin.copy:
@@ -527,7 +560,9 @@
         owner: "root"
         group: "root"
         mode: "0644"
-      when: "ansible_facts['os_family'] in ['RedHat', 'Suse']"
+      when: 
+        - "ansible_facts['os_family'] in ['RedHat', 'Suse']"
+        - "not ansible_check_mode"
 
     - name: Compile hardened initramfs boot images inside targeted runtime environment (Arch Linux)
       ansible.builtin.command: arch-chroot /mnt/target mkinitcpio -P
@@ -566,9 +601,6 @@
         - "ansible_facts['os_family'] == 'Debian'"
         - "not ansible_check_mode"
 
-    # =========================================================================
-    # THE MISSING LINK: INTER-STAGE INVENTORY GENERATION
-    # =========================================================================
     - name: "CONNECTOR | Write active local deployment loop inventory for Stage 2 stacking"
       ansible.builtin.copy:
         content: |
@@ -580,7 +612,7 @@
         mode: "0644"
       when: "not ansible_check_mode"
     # =========================================================================
-    # PHASE 6: SAFE TEARDOWN PIPELINE
+    # PHASE 12: SAFE TEARDOWN CLEANUP
     # =========================================================================
     - name: Unmount virtual API kernel filesystems to unlock the target structure workspace
       ansible.builtin.command: "umount -l /mnt/target{{ item }}"
@@ -591,6 +623,7 @@
       ansible.builtin.command: "umount -R /mnt/target"
       failed_when: false
       when: "not ansible_check_mode"
+
   handlers:
     - name: "Reload Systemd Configuration"
       ansible.builtin.systemd:
