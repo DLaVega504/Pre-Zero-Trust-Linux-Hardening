@@ -1,0 +1,288 @@
+ansible-playbook -i hosts.ini Universal-Linux-PreHardening.yml --check  --skip-tags=integrity -K
+BECOME password: 
+
+PLAY [Universal Interactive Turn-Key Linux Pre-Hardening Framework (Stage 1)] ********************************************************
+
+TASK [Gathering Facts] ***************************************************************************************************************
+[WARNING]: Host 'localhost' is using the discovered Python interpreter at '/usr/bin/python3.14', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ok: [localhost]
+
+TASK [PROMPT | Gather target disk selection] *****************************************************************************************
+[PROMPT | Gather target disk selection]
+[?] Enter absolute block device target to partition (e.g., /dev/sda):
+ok: [localhost]
+
+TASK [PROMPT | Gather secure vault sizing metrics] ***********************************************************************************
+[PROMPT | Gather secure vault sizing metrics]
+Enter the size for the Vault partition in GB (5 to 60, or enter 0 to SKIP the vault entirely) [Default: 50]:
+ok: [localhost]
+
+TASK [PROMPT | Gather Main OS Passphrase] ********************************************************************************************
+[PROMPT | Gather Main OS Passphrase]
+Enter Master Passphrase for Main OS Partition (Typed at boot) (output is hidden):
+ok: [localhost]
+
+TASK [PROMPT | Gather Vault Passphrase] **********************************************************************************************
+[PROMPT | Gather Vault Passphrase]
+Enter Master Passphrase for Secure Vault Partition (Bypassed if size is 0) (output is hidden):
+ok: [localhost]
+
+TASK [PROMPT | Gather ROOT Administrative Password] **********************************************************************************
+[PROMPT | Gather ROOT Administrative Password]
+Enter System Administrative ROOT Password (output is hidden):
+ok: [localhost]
+
+TASK [PROMPT | Gather Account Username] **********************************************************************************************
+[PROMPT | Gather Account Username]
+Enter the account username for the primary regular user [vega]:
+ok: [localhost]
+
+TASK [PROMPT | Gather Account Password] **********************************************************************************************
+[PROMPT | Gather Account Password]
+Enter the account password for the regular user (output is hidden):
+ok: [localhost]
+
+TASK [RECON | Gather targeted runtime platform hardware footprint metadata] **********************************************************
+ok: [localhost]
+
+TASK [VALIDATION | Ensure Vault size constraints match architecture rules] ***********************************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [RECON | Validate targeted installation disk path exists on system] *************************************************************
+ok: [localhost]
+
+TASK [RECON | Detect active motherboard boot firmware schema] ************************************************************************
+ok: [localhost]
+
+TASK [RECON | Map environment path layout syntax strings] ****************************************************************************
+ok: [localhost]
+
+TASK [RECON | Compute adaptive raw physical storage allocations] *********************************************************************
+ok: [localhost]
+
+TASK [Ingest multi-distribution security baseline mappings file] *********************************************************************
+ok: [localhost]
+
+TASK [RECON | Map host platform operational security variables for Arch Linux] *******************************************************
+ok: [localhost]
+
+TASK [RECON | Map host platform operational security variables for Debian] ***********************************************************
+skipping: [localhost]
+
+TASK [RECON | Map host platform operational security variables for Fedora (RedHat)] **************************************************
+skipping: [localhost]
+
+TASK [RECON | Map host platform operational security variables for openSUSE (Suse)] **************************************************
+skipping: [localhost]
+
+TASK [LOGGING | Output calculated storage schema boundaries] *************************************************************************
+ok: [localhost] => {
+    "msg": [
+        "Identified Block Storage Device Target: /dev/sda",
+        "System Boot Mode Infrastructure: Legacy BIOS Mode (MBR enforced)",
+        "Calculated Dynamic Swap Target Path Size: 7618 MB",
+        "Isolated Secure Vault Partition Deployment Status: ENABLED (50 GB)"
+    ]
+}
+
+TASK [STORAGE | Clear storage tables and write clean partition layouts] **************************************************************
+skipping: [localhost]
+
+TASK [LUKS | Establish volume partition indices for UEFI with Vault layout] **********************************************************
+skipping: [localhost]
+
+TASK [LUKS | Establish volume partition indices for UEFI single-drive layout] ********************************************************
+skipping: [localhost]
+
+TASK [LUKS | Establish volume partition indices for Legacy BIOS with Vault layout] ***************************************************
+ok: [localhost]
+
+TASK [LUKS | Establish volume partition indices for Legacy BIOS single-drive layout] *************************************************
+skipping: [localhost]
+
+TASK [LUKS | Form structural high-security LUKS1 volume on Main OS partition] ********************************************************
+skipping: [localhost]
+
+TASK [LUKS | Unlock target root crypt volume context map] ****************************************************************************
+skipping: [localhost]
+
+TASK [BTRFS | Format unlocked primary mapper volume layout as clean Btrfs] ***********************************************************
+skipping: [localhost]
+
+TASK [STORAGE | Mount master system root target for installation] ********************************************************************
+skipping: [localhost]
+
+TASK [STORAGE | Map physical directory system nodes onto target] *********************************************************************
+skipping: [localhost] => (item=home) 
+skipping: [localhost] => (item=boot) 
+skipping: [localhost] => (item=boot/efi) 
+skipping: [localhost] => (item=etc) 
+skipping: [localhost] => (item=usr) 
+skipping: [localhost] => (item=usr/local) 
+skipping: [localhost] => (item=usr/local/bin) 
+skipping: [localhost] => (item=var) 
+skipping: [localhost] => (item=etc/secure) 
+skipping: [localhost]
+
+TASK [STORAGE | Allocate empty block target index file container for swap] ***********************************************************
+skipping: [localhost]
+
+TASK [STORAGE | Disable Copy-on-Write (CoW) metrics on the baseline swap file] *******************************************************
+skipping: [localhost]
+
+TASK [STORAGE | Disable Btrfs compression rules explicitly on swapfile] **************************************************************
+skipping: [localhost]
+
+TASK [STORAGE | Fill real system data bit allocations for fallback swap size] ********************************************************
+skipping: [localhost]
+
+TASK [STORAGE | Format swap file tracking signatures] ********************************************************************************
+skipping: [localhost]
+
+TASK [BOOTSTRAP | Execute Base OS Environment Image Provisioning (Arch Linux Module)] ************************************************
+skipping: [localhost]
+
+TASK [Deploy Debootstrap utility onto host runner context] ***************************************************************************
+skipping: [localhost]
+
+TASK [Pull clean core image layers onto targeted root structure] *********************************************************************
+skipping: [localhost]
+
+TASK [BOOTSTRAP | Execute Base OS Environment Image Provisioning (Fedora Module)] ****************************************************
+skipping: [localhost]
+
+TASK [BOOTSTRAP | Execute Base OS Environment Image Provisioning (openSUSE Module)] **************************************************
+skipping: [localhost]
+
+TASK [VAULT | Form enterprise LUKS2 container using primary Argon2id algorithms on partition 2] **************************************
+skipping: [localhost]
+
+TASK [VAULT | Ensure secure encryption key storage directory exists] *****************************************************************
+skipping: [localhost]
+
+TASK [VAULT | Generate a random 32-byte cryptographically secure hardware system vault key] ******************************************
+skipping: [localhost]
+
+TASK [VAULT | Lock structural file signatures strictly to root level privileges] *****************************************************
+skipping: [localhost]
+
+TASK [VAULT | Inject the generated system keyfile into secondary slot of vault partition] ********************************************
+skipping: [localhost]
+
+TASK [VAULT | Unlock vault mapper channel utilizing the newly registered system keyfile] *********************************************
+skipping: [localhost]
+
+TASK [VAULT | Extract the hardware UUID parameter block from vault partition 2] ******************************************************
+skipping: [localhost]
+
+TASK [VAULT | Format the exposed vault target mapped space as standard Ext4 storage] *************************************************
+skipping: [localhost]
+
+TASK [VAULT | Securely close the open device mapping to clear tracking descriptors from active RAM] **********************************
+skipping: [localhost]
+
+TASK [Bind essential virtual API kernel filesystems into the target node workspace] **************************************************
+skipping: [localhost] => (item={'src': '/dev', 'path': '/dev'}) 
+skipping: [localhost] => (item={'src': '/dev/pts', 'path': '/dev/pts'}) 
+skipping: [localhost] => (item={'src': '/proc', 'path': '/proc'}) 
+skipping: [localhost] => (item={'src': '/sys', 'path': '/sys'}) 
+skipping: [localhost]
+
+TASK [Copy host DNS configuration to prevent chroot network mirror failures] *********************************************************
+skipping: [localhost]
+
+TASK [SYSTEM CONFIG | Dynamically forge file system runtime fstab layout ledger table] ***********************************************
+skipping: [localhost]
+
+TASK [SYSTEM CONFIG | Generate crypttab map ledger to open hardware devices on boot sequence] ****************************************
+skipping: [localhost]
+
+TASK [Deploy custom encrypted storage layout administration wrapper binary to system paths] ******************************************
+skipping: [localhost]
+
+TASK [Define chroot utility invocation macro strings based on platform distribution] *************************************************
+ok: [localhost]
+
+TASK [Download firmware-dependent runtime boot loader modules and desktop environment components] ************************************
+skipping: [localhost]
+
+TASK [USER | Set administrative user root password] **********************************************************************************
+skipping: [localhost]
+
+TASK [USER | Register primary regular deployment group] ******************************************************************************
+skipping: [localhost]
+
+TASK [USER | Create primary account with native distribution privilege group] ********************************************************
+skipping: [localhost]
+
+TASK [USER | Commit primary regular user credential password] ************************************************************************
+skipping: [localhost]
+
+TASK [VISUDO | Deploy clean drop-in privileges with absolute visudo syntax validation] ***********************************************
+skipping: [localhost]
+
+TASK [Generate the early userspace unlocking keyfile inside the encrypted container] *************************************************
+skipping: [localhost]
+
+TASK [Lock early userspace unlock key file signatures strictly to root level privileges] *********************************************
+skipping: [localhost]
+
+TASK [Inject early userspace unlock key block straight into main LUKS container keyslot] *********************************************
+skipping: [localhost]
+
+TASK [Inject early userspace keyfile array parameters into mkinitcpio configuration (Arch Linux)] ************************************
+skipping: [localhost]
+
+TASK [Inject critical crypto modules and hooks into mkinitcpio configuration (Arch Linux)] *******************************************
+skipping: [localhost]
+
+TASK [Inject early userspace keyfile extraction rules into Dracut profile trees (Fedora/openSUSE)] ***********************************
+skipping: [localhost]
+
+TASK [Compile hardened initramfs boot images inside targeted runtime environment (Arch Linux)] ***************************************
+skipping: [localhost]
+
+TASK [Inject critical encryption parameters into core GRUB configurations] ***********************************************************
+skipping: [localhost] => (item={'regexp': '^#?GRUB_ENABLE_CRYPTODISK=', 'line': 'GRUB_ENABLE_CRYPTODISK=y'}) 
+skipping: [localhost] => (item={'regexp': '^GRUB_CMDLINE_LINUX=', 'line': 'GRUB_CMDLINE_LINUX="cryptdevice=/dev/sda1:cryptroot root=/dev/mapper/cryptroot rootfstype=btrfs rootflags=subvol=@ rw"'}) 
+skipping: [localhost] => (item={'regexp': '^GRUB_CMDLINE_LINUX_DEFAULT=', 'line': 'GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet lsm=landlock,lockdown,yama,apparmor,bpf"'}) 
+skipping: [localhost]
+
+TASK [Deploy physical GRUB engine mapping blocks based on firmware mode] *************************************************************
+skipping: [localhost]
+
+TASK [Compile final GRUB environment execution maps with snapshot recovery options] **************************************************
+skipping: [localhost]
+
+TASK [Actively enable system desktop services and bluetooth managers inside environment] *********************************************
+skipping: [localhost] => (item=NetworkManager) 
+skipping: [localhost] => (item=lightdm) 
+skipping: [localhost] => (item=bluetooth) 
+skipping: [localhost] => (item=firewalld) 
+skipping: [localhost] => (item=tuned) 
+skipping: [localhost] => (item=grub-btrfsd) 
+skipping: [localhost]
+
+TASK [Regenerate initramfs boot images with structural encryption hooks (Debian)] ****************************************************
+skipping: [localhost]
+
+TASK [CONNECTOR | Write active local deployment loop inventory for Stage 2 stacking] *************************************************
+skipping: [localhost]
+
+TASK [Unmount virtual API kernel filesystems to unlock the target structure workspace] ***********************************************
+skipping: [localhost] => (item=/dev/pts) 
+skipping: [localhost] => (item=/dev) 
+skipping: [localhost] => (item=/proc) 
+skipping: [localhost] => (item=/sys) 
+skipping: [localhost]
+
+TASK [CLEANUP | Run a systematic unmount sweep to flush storage memory buffers cleanly] **********************************************
+skipping: [localhost]
+
+PLAY RECAP ***************************************************************************************************************************
+localhost                  : ok=19   changed=0    unreachable=0    failed=0    skipped=57   rescued=0    ignored=0   
+
+
