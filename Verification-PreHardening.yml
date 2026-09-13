@@ -17,6 +17,7 @@
     - name: "AUDIT | Verify primary cryptographic root mapper channel is active"
       ansible.builtin.stat:
         path: "/dev/mapper/{{ os_crypt_name }}"
+        follow: true # <--- THIS IS THE SECOP FIX! IT FOLLOWS THE LINK TO THE REAL dm-0 BLOCK!
       register: crypt_root_status
 
     - name: "ENFORCE | Validate primary block volume descriptor integrity"
