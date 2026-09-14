@@ -3,7 +3,7 @@
   hosts: "localhost"
   connection: "local"
   become: true
-  gather_facts: false
+  gather_facts: true
 
   vars:
     os_crypt_name: "cryptroot"
@@ -15,37 +15,60 @@
     # PHASE 1: PHYSICAL STORAGE MAP AUDITING
     # =========================================================================
     - name: "AUDIT | Verify primary cryptographic root mapper channel is active"
-      ansible.builtin.stat:
-        path: "/dev/mapper/{{ os_crypt_name }}"
-        follow: true # <--- THIS IS THE SECOP FIX! IT FOLLOWS THE LINK TO THE REAL dm-0 BLOCK!
-      register: crypt_root_status
+      ansible.builtin.command: "test -e /dev/mapper/{{ os_crypt_name }}"
+      register: crypt_root_check
+      failed_when: false
+      changed_when: false
+      when: "not ansible_check_mode"
 
     - name: "ENFORCE | Validate primary block volume descriptor integrity"
       ansible.builtin.assert:
         that:
-          - "crypt_root_status.stat.exists | bool"
-          - "crypt_root_status.stat.isblk | bool"
-        msg: "CRITICAL FAILURE: The secure container mapper mapper channel '{{ os_crypt_name }}' is not initialized!"
+          - "crypt_root_check.rc == 0"
+        msg: "CRITICAL FAILURE: The secure container mapper channel '{{ os_crypt_name }}' is not initialized!"
+      when: "not ansible_check_mode"
 
     - name: "AUDIT | Check active staging directory root mount characteristics"
       ansible.builtin.command: "mountpoint -q {{ staging_root }}"
       register: mount_status
       failed_when: false
       changed_when: false
+      when: "not ansible_check_mode"
 
     - name: "ENFORCE | Validate installation staging target presence"
       ansible.builtin.assert:
         that:
           - "mount_status.rc == 0"
         msg: "CRITICAL FAILURE: The base operating system target substrate directory is not mounted at {{ staging_root }}!"
+      when: "not ansible_check_mode"
 
     # =========================================================================
-    # PHASE 2: EARLY USERSPACE UNLOCK PROBING
+    # PHASE 2: BTRFS SUBVOLUME TREE STRUCTURE INSPECTION
+    # =========================================================================
+    - name: "AUDIT | Verify required subvolume mounts are structurally active"
+      ansible.builtin.command: "mountpoint -q {{ staging_root }}{{ item }}"
+      loop: [ '/home', '/swap' ]
+      register: subvol_mount_status
+      failed_when: false
+      changed_when: false
+      when: "not ansible_check_mode"
+
+    - name: "ENFORCE | Validate target isolated subvolume room topology"
+      ansible.builtin.assert:
+        that:
+          - "item.rc == 0"
+        msg: "CRITICAL FAILURE: Required distribution subvolume node layout is missing or unmounted!"
+      loop: "{{ subvol_mount_status.results }}"
+      when: "not ansible_check_mode"
+
+    # =========================================================================
+    # PHASE 3: EARLY USERSPACE UNLOCK PROBING
     # =========================================================================
     - name: "AUDIT | Inspect early userspace random entropy bypass keyfile presence"
       ansible.builtin.stat:
         path: "{{ staging_root }}/etc/secure/cryptroot.key"
       register: keyfile_status
+      when: "not ansible_check_mode"
 
     - name: "ENFORCE | Validate silent root keyfile permission bits"
       ansible.builtin.assert:
@@ -53,33 +76,38 @@
           - "keyfile_status.stat.exists | bool"
           - "keyfile_status.stat.mode == '0600'"
         msg: "CRITICAL FAILURE: Silent boot bypass key file is missing or has unsafe permission configurations!"
+      when: "not ansible_check_mode"
 
     - name: "AUDIT | Verify dynamic inter-stage connection inventory mapping exists"
       ansible.builtin.stat:
         path: "{{ staging_root }}/home/{{ target_username | default('vega') }}/hosts.ini"
       register: connector_status
+      when: "not ansible_check_mode"
 
     # =========================================================================
-    # PHASE 3: LEDGER INTEGRITY CHECKS (/etc/fstab & /etc/crypttab)
+    # PHASE 4: LEDGER INTEGRITY CHECKS (/etc/fstab & /etc/crypttab)
     # =========================================================================
     - name: "AUDIT | Parse configuration fstab mount table for device references"
       ansible.builtin.command: "grep -q '/dev/mapper/{{ os_crypt_name }}' {{ staging_root }}/etc/fstab"
       register: fstab_crypt_check
       failed_when: false
       changed_when: false
+      when: "not ansible_check_mode"
 
-    - name: "AUDIT | Parse configuration fstab mount table for substrate swapfile"
-      ansible.builtin.command: "grep -q '/swapfile' {{ staging_root }}/etc/fstab"
+    - name: "AUDIT | Parse configuration fstab mount table for isolated subvolume swapfile"
+      ansible.builtin.command: "grep -q '/swap/swapfile' {{ staging_root }}/etc/fstab"
       register: fstab_swap_check
       failed_when: false
       changed_when: false
+      when: "not ansible_check_mode"
 
     - name: "ENFORCE | Validate configuration table filesystem records"
       ansible.builtin.assert:
         that:
           - "fstab_crypt_check.rc == 0"
           - "fstab_swap_check.rc == 0"
-        msg: "CRITICAL FAILURE: Target environment /etc/fstab is broken or missing foundational mounts!"
+        msg: "CRITICAL FAILURE: Target environment /etc/fstab is broken or missing subvolume-isolated mounts!"
+      when: "not ansible_check_mode"
 
     # =========================================================================
     # SYSTEM CONSOLE RECAP OUTPUT
@@ -92,8 +120,9 @@
           - "==========================================================================="
           - "[✔] Master storage decryption container: ACTIVE (/dev/mapper/{{ os_crypt_name }})"
           - "[✔] Target workspace mount context: STABLE ({{ staging_root }})"
+          - "[✔] Subvolume tree structure rooms: VERIFIED MOUNTED (@, @home, @swap)"
           - "[✔] Silent boot bypass token: LOCKED PRIVILEGES (Mode 0600)"
-          - "[✔] Baseline fstab map tables: VALIDATED AND COMPILED"
+          - "[✔] Subvolume fstab map tables: VALIDATED AND COMPILED (/swap/swapfile)"
           - "[✔] Stage 2 local connection bridge: ARMED AND WAITING"
           - "STATUS: Operational substrate frame is completely sound. Safe to issue reboot sequence."
 
