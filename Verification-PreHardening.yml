@@ -45,9 +45,9 @@
     # =========================================================================
     # PHASE 2: BTRFS SUBVOLUME TREE STRUCTURE INSPECTION
     # =========================================================================
-    - name: "AUDIT | Verify required subvolume mounts are structurally active"
+    - name: "AUDIT | Verify all core subvolume paths are structurally active"
       ansible.builtin.command: "mountpoint -q {{ staging_root }}{{ item }}"
-      loop: [ '/home', '/swap' ]
+      loop: [ '/home', '/var/log', '/swap', '/var/lib/portables', '/var/lib/machines', '/.snapshots', '/home/.snapshots', '/srv' ]
       register: subvol_mount_status
       failed_when: false
       changed_when: false
@@ -57,33 +57,52 @@
       ansible.builtin.assert:
         that:
           - "item.rc == 0"
-        msg: "CRITICAL FAILURE: Required distribution subvolume node layout is missing or unmounted!"
+        msg: "CRITICAL FAILURE: Required distribution subvolume node layout path '{{ item.item }}' is missing or unmounted!"
       loop: "{{ subvol_mount_status.results }}"
       when: "not ansible_check_mode"
-
     # =========================================================================
-    # PHASE 3: EARLY USERSPACE UNLOCK PROBING
+    # PHASE 3: COW-EXEMPT SWAP & CRYPTOGRAPHIC KEY METRICS
     # =========================================================================
-    - name: "AUDIT | Inspect early userspace random entropy bypass keyfile presence"
+    - name: "AUDIT | Inspect layout parameters of the allocated system swap file"
       ansible.builtin.stat:
-        path: "{{ staging_root }}/etc/secure/cryptroot.key"
-      register: keyfile_status
+        path: "{{ staging_root }}/swap/swapfile"
+      register: swapfile_status
       when: "not ansible_check_mode"
 
-    - name: "ENFORCE | Validate silent root keyfile permission bits"
+    - name: "ENFORCE | Validate physical swapfile presence and security bounds"
       ansible.builtin.assert:
         that:
-          - "keyfile_status.stat.exists | bool"
-          - "keyfile_status.stat.mode == '0600'"
-        msg: "CRITICAL FAILURE: Silent boot bypass key file is missing or has unsafe permission configurations!"
+          - "swapfile_status.stat.exists | bool"
+          - "swapfile_status.stat.mode == '0600'"
+        msg: "CRITICAL FAILURE: System swapfile is missing or has insecure root permissions!"
       when: "not ansible_check_mode"
 
-    - name: "AUDIT | Verify dynamic inter-stage connection inventory mapping exists"
+    - name: "AUDIT | Verify Copy-on-Write (CoW) exemption flag status on swap file"
+      ansible.builtin.command: "lsattr {{ staging_root }}/swap/swapfile"
+      register: swap_attr_check
+      changed_when: false
+      when: "not ansible_check_mode"
+
+    - name: "ENFORCE | Validate absolute Btrfs CoW exemption state"
+      ansible.builtin.assert:
+        that:
+          - "'C' in swap_attr_check.stdout"
+        msg: "CRITICAL FAILURE: Swap file is missing the mandatory Copy-on-Write (+C) exemption attribute flag!"
+      when: "not ansible_check_mode"
+
+    - name: "AUDIT | Verify random 32-byte secure vault hardware unlock token presence"
       ansible.builtin.stat:
-        path: "{{ staging_root }}/home/{{ target_username | default('vega') }}/hosts.ini"
-      register: connector_status
+        path: "{{ staging_root }}/etc/secure/vault.key"
+      register: vault_key_status
       when: "not ansible_check_mode"
 
+    - name: "ENFORCE | Validate detached system vault keyfile permission matrices"
+      ansible.builtin.assert:
+        that:
+          - "vault_key_status.stat.exists | bool"
+          - "vault_key_status.stat.mode == '0400'"
+        msg: "CRITICAL FAILURE: High-security detached vault key mapping is missing or lacks strict Mode 0400 constraints!"
+      when: "not ansible_check_mode"
     # =========================================================================
     # PHASE 4: LEDGER INTEGRITY CHECKS (/etc/fstab & /etc/crypttab)
     # =========================================================================
@@ -94,23 +113,31 @@
       changed_when: false
       when: "not ansible_check_mode"
 
-    - name: "AUDIT | Parse configuration fstab mount table for isolated subvolume swapfile"
+    - name: "AUDIT | Parse configuration fstab mount table for isolated swap maps"
       ansible.builtin.command: "grep -q '/swap/swapfile' {{ staging_root }}/etc/fstab"
       register: fstab_swap_check
       failed_when: false
       changed_when: false
       when: "not ansible_check_mode"
 
-    - name: "ENFORCE | Validate configuration table filesystem records"
+    - name: "AUDIT | Parse target crypttab encryption ledger maps for core container routing paths"
+      ansible.builtin.command: "grep -q '{{ os_crypt_name }} UUID=' {{ staging_root }}/etc/crypttab"
+      register: crypttab_core_check
+      failed_when: false
+      changed_when: false
+      when: "not ansible_check_mode"
+
+    - name: "ENFORCE | Validate static configuration tables filesystem records"
       ansible.builtin.assert:
         that:
           - "fstab_crypt_check.rc == 0"
           - "fstab_swap_check.rc == 0"
-        msg: "CRITICAL FAILURE: Target environment /etc/fstab is broken or missing subvolume-isolated mounts!"
+          - "crypttab_core_check.rc == 0"
+        msg: "CRITICAL FAILURE: Target filesystem configuration ledger matrices (/etc/fstab or /etc/crypttab) are broken or invalid!"
       when: "not ansible_check_mode"
 
     # =========================================================================
-    # SYSTEM CONSOLE RECAP OUTPUT
+    # SYSTEM CONSOLE RECAP DIAGNOSTICS CARD
     # =========================================================================
     - name: "LOGGING | Output absolute system framework validation success matrix"
       ansible.builtin.debug:
@@ -120,9 +147,9 @@
           - "==========================================================================="
           - "[✔] Master storage decryption container: ACTIVE (/dev/mapper/{{ os_crypt_name }})"
           - "[✔] Target workspace mount context: STABLE ({{ staging_root }})"
-          - "[✔] Subvolume tree structure rooms: VERIFIED MOUNTED (@, @home, @swap)"
-          - "[✔] Silent boot bypass token: LOCKED PRIVILEGES (Mode 0600)"
-          - "[✔] Subvolume fstab map tables: VALIDATED AND COMPILED (/swap/swapfile)"
-          - "[✔] Stage 2 local connection bridge: ARMED AND WAITING"
+          - "[✔] Subvolume tree structure rooms: VERIFIED MOUNTED (13-Node Topology Active)"
+          - "[✔] Solid Btrfs Swap Allocation: ACTIVE (Mode 0600, +C Copy-on-Write Exempt)"
+          - "[✔] Detached Vault Cryptographic Key: ARMED AND SECURED (Mode 0400 /etc/secure/)"
+          - "[✔] System configuration ledgers: VALIDATED AND COMPILED (fstab & crypttab Sync)"
           - "STATUS: Operational substrate frame is completely sound. Safe to issue reboot sequence."
 

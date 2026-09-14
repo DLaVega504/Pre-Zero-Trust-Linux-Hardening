@@ -2,6 +2,9 @@
 ---
 arch_vars:
   admin_group: "wheel"
+  bootstrap_packages: "base base-devel linux linux-firm btrfs-progs cryptsetup grub efibootmgr snapper sudo nano vim networkmanager firewalld lightdm lightdm-gtk-greeter xorg-server xfce4 inotify-tools git make"
+  kernel_version: "linux"
+  initramfs_cmd: "mkinitcpio -P"
   subvolumes:
     - { name: "@", dest: "/" }
     - { name: "@home", dest: "/home" }
@@ -19,6 +22,9 @@ arch_vars:
 
 debian_vars:
   admin_group: "sudo"
+  bootstrap_packages: "btrfs-progs,cryptsetup,cryptsetup-initramfs,grub-pc,grub-efi-amd64,efibootmgr,sudo,network-manager,firewalld,lightdm,xfce4,vim,snapper,inotify-tools,git,make"
+  kernel_version: "linux-image-amd64"
+  initramfs_cmd: "update-initramfs -u -k all"
   subvolumes:
     - { name: "@", dest: "/" }
     - { name: "@home", dest: "/home" }
@@ -36,6 +42,9 @@ debian_vars:
 
 fedora_vars:
   admin_group: "wheel"
+  bootstrap_packages: "kernel,kernel-core,kernel-modules,btrfs-progs,cryptsetup,grub2-efi,grub2-pc,efibootmgr,networkmanager,firewalld,lightdm,vim,snapper,inotify-tools,git,make"
+  kernel_version: "kernel"
+  initramfs_cmd: "dracut --regenerate-all --force"
   subvolumes:
     - { name: "@", dest: "/" }
     - { name: "@home", dest: "/home" }
@@ -53,6 +62,9 @@ fedora_vars:
 
 suse_vars:
   admin_group: "wheel"
+  bootstrap_packages: "btrfs-progs cryptsetup grub2 grub2-x86_64-efi efibootmgr NetworkManager firewalld lightdm vim snapper inotify-tools grub2-snapper-plugin git make kernel-default"
+  kernel_version: "kernel-default"
+  initramfs_cmd: "dracut --regenerate-all --force"
   subvolumes:
     - { name: "@", dest: "/.snapshots/1/snapshot" } 
     - { name: "@home", dest: "/home" }

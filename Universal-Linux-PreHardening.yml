@@ -20,9 +20,6 @@
     vault_user_password: "{{ user_pass_prompt.user_input | default('', true) }}"
 
   tasks:
-    # =========================================================================
-    # PHASE 1: SYSTEM COLLECTION PROMPTS
-    # =========================================================================
     - name: "PHASE 1 | PROMPT | Gather target disk selection"
       ansible.builtin.pause:
         prompt: "[?] Enter absolute block device target to partition (e.g., /dev/sda)"
@@ -61,15 +58,12 @@
         prompt: "Enter the account password for the regular user"
         echo: false
       register: user_pass_prompt
-    # =========================================================================
-    # PHASE 2: DETECTING ENVIRONMENT AND TELEMETRY CALCULATIONS
-    # =========================================================================
+
     - name: "PHASE 2 | VALIDATION | Ensure Vault size constraints match architecture rules"
       ansible.builtin.assert:
         that:
           - "vault_size_input | int == 0 or (vault_size_input | int >= 5 and vault_size_input | int <= 60)"
         msg: "FATAL ERROR: Vault size must be 0 or specified between 5 and 60 GB max."
-
     - name: "PHASE 2 | RECON | Validate targeted installation disk path exists on system"
       ansible.builtin.stat:
         path: "{{ target_disk }}"
@@ -108,9 +102,6 @@
         active_blueprint: "{{ distro_blueprint.arch_vars if ansible_facts['os_family'] == 'Archlinux' else distro_blueprint.debian_vars if ansible_facts['os_family'] == 'Debian' else distro_blueprint.fedora_vars if ansible_facts['os_family'] == 'RedHat' else distro_blueprint.suse_vars }}"
         admin_group: "{{ 'sudo' if ansible_facts['os_family'] == 'Debian' else 'wheel' }}"
 
-    # =========================================================================
-    # PHASE 3: DISK PARTITIONING ENGINE (BIOS VS UEFI BOUNDARIES)
-    # =========================================================================
     - name: "PHASE 3 | STORAGE | Clear system partition records and write clean target maps"
       ansible.builtin.shell: |
         wipefs -a --force {{ target_disk }}
@@ -144,9 +135,6 @@
         esp_partition: "{{ target_disk }}{{ p_suffix }}1"
         os_partition: "{{ (target_disk + p_suffix + '2') if (is_uefi | bool) else (target_disk + p_suffix + '1') }}"
         vault_partition: "{{ (target_disk + p_suffix + '3') if (is_uefi | bool) else (target_disk + p_suffix + '2') if has_vault | bool else 'none' }}"
-    # =========================================================================
-    # PHASE 4: ENCRYPTING CYCLING LAYER (LUKS SETUP)
-    # =========================================================================
     - name: "PHASE 4 | LUKS | Establish secure container volume over Main OS workspace"
       ansible.builtin.shell: "echo '{{ os_passphrase }}' | cryptsetup luksFormat --type luks1 --batch-mode {{ os_partition }}"
       become: true
@@ -165,9 +153,6 @@
       become: true
       when: "not ansible_check_mode"
 
-    # =========================================================================
-    # PHASE 5: BTRFS STORAGE SEGREGATION & 13-SUBVOLUME PREPARATION
-    # =========================================================================
     - name: "PHASE 5 | BTRFS | Initialize structural platform filesystem pool"
       ansible.builtin.filesystem:
         fstype: "btrfs"
@@ -201,7 +186,6 @@
       become: true
       failed_when: false
       when: "not ansible_check_mode"
-
     - name: "PHASE 5 | STORAGE | Enforce target deployment folder structures"
       ansible.builtin.file:
         path: "{{ item }}"
@@ -249,9 +233,7 @@
         fi
       become: true
       when: "not ansible_check_mode"
-    # =========================================================================
-    # PHASE 6: FRAGMENTATION EXEMPT SWAP LAYER
-    # =========================================================================
+
     - name: "PHASE 6 | STORAGE | Create zero-byte footprint file mapping within isolated path"
       ansible.builtin.file:
         path: "/mnt/target/swap/swapfile"
@@ -287,46 +269,19 @@
       become: true
       when: "not ansible_check_mode"
 
-    # =========================================================================
-    # PHASE 7: INSTANTIATING COLD DISTRIBUTION PACKAGE INJECTION
-    # =========================================================================
-    - name: "PHASE 7 | BOOTSTRAP | Install foundational system tools (Arch Linux)"
-      ansible.builtin.command: pacstrap /mnt/target base base-devel linux linux-firmware btrfs-progs cryptsetup grub efibootmgr snapper sudo nano vim networkmanager firewalld lightdm lightdm-gtk-greeter xorg-server xfce4 xfce4-goodies inotify-tools
+    - name: "PHASE 7 | BOOTSTRAP | Install foundational system tools"
+      ansible.builtin.shell: |
+        if [ "{{ ansible_facts['os_family'] }}" = "Archlinux" ]; then
+          pacstrap /mnt/target {{ active_blueprint.bootstrap_packages }}
+        elif [ "{{ ansible_facts['os_family'] }}" = "Debian" ]; then
+          debootstrap --include={{ active_blueprint.bootstrap_packages }} stable /mnt/target http://debian.org
+        elif [ "{{ ansible_facts['os_family'] }}" = "RedHat" ]; then
+          dnf --installroot=/mnt/target --releasever=40 groupinstall -y "Minimal Install" "Xfce Desktop" --include={{ active_blueprint.bootstrap_packages }}
+        elif [ "{{ ansible_facts['os_family'] }}" = "Suse" ]; then
+          zypper --root /mnt/target install -y --no-recommends -t pattern base xfce {{ active_blueprint.bootstrap_packages }}
+        fi
       become: true
-      when: 
-        - "ansible_facts['os_family'] == 'Archlinux'"
-        - "not ansible_check_mode"
-
-    - name: "PHASE 7 | BOOTSTRAP | Install foundational system tools (Debian)"
-      block:
-        - name: "Deploy validation dependencies inside system context wrapper"
-          ansible.builtin.package:
-            name: debootstrap
-            state: present
-          become: true
-        - name: "Initialize structural image layers onto workspace"
-          ansible.builtin.command: debootstrap --include=btrfs-progs,cryptsetup,cryptsetup-initramfs,grub-pc,grub-efi-amd64,efibootmgr,sudo,network-manager,firewalld,lightdm,xfce4,vim,snapper,inotify-tools stable /mnt/target http://debian.org
-          become: true
-      when: 
-        - "ansible_facts['os_family'] == 'Debian'"
-        - "not ansible_check_mode"
-
-    - name: "PHASE 7 | BOOTSTRAP | Install foundational system tools (Fedora Core)"
-      ansible.builtin.command: dnf --installroot=/mnt/target --releasever=40 groupinstall -y "Minimal Install" "Xfce Desktop" --include=kernel,kernel-core,kernel-modules,btrfs-progs,cryptsetup,grub2-efi,grub2-pc,efibootmgr,networkmanager,firewalld,lightdm,vim,snapper,inotify-tools
-      become: true
-      when: 
-        - "ansible_facts['os_family'] == 'RedHat'"
-        - "not ansible_check_mode"
-
-    - name: "PHASE 7 | BOOTSTRAP | Install foundational system tools (openSUSE Tumbleweed)"
-      ansible.builtin.command: zypper --root /mnt/target install -y --no-recommends patterns-base-base_system patterns-xfce-xfce btrfs-progs cryptsetup grub2 grub2-x86_64-efi efibootmgr NetworkManager firewalld lightdm vim snapper inotify-tools grub2-snapper-plugin
-      become: true
-      when: 
-        - "ansible_facts['os_family'] == 'Suse'"
-        - "not ansible_check_mode"
-    # =========================================================================
-    # PHASE 8: HIGH-SECURITY DETACHED LUKS2 BTRFS VAULT SETUP
-    # =========================================================================
+      when: "not ansible_check_mode"
     - name: "PHASE 8 | VAULT | Form enterprise LUKS2 container using primary Argon2id algorithms"
       ansible.builtin.shell: "echo '{{ vault_passphrase }}' | cryptsetup luksFormat --type luks2 --pbkdf argon2id --batch-mode {{ vault_partition }}"
       become: true
@@ -414,9 +369,6 @@
         - "not ansible_check_mode"
         - "has_vault | bool"
 
-    # =========================================================================
-    # PHASE 9: CHROOT MOUNT BINDING AND CONFIG LEDGERS
-    # =========================================================================
     - name: "PHASE 9 | CHROOT | Bind peripheral API kernel filesystems into environment framework"
       ansible.builtin.command: "mount --bind {{ item.src }} /mnt/target{{ item.path }}"
       become: true
@@ -475,9 +427,6 @@
         mode: "0440"
       become: true
       when: "not ansible_check_mode"
-    # =========================================================================
-    # PHASE 10: THE CRITICAL BOOTLOADER INJECTION AND RECOVERY SNAPSHOTS
-    # =========================================================================
     - name: "PHASE 10 | CHROOT | Build configuration macros based on target profile architecture"
       ansible.builtin.set_fact:
         chroot_prefix: "{{ 'arch-chroot /mnt/target' if ansible_facts['os_family'] == 'Archlinux' else 'chroot /mnt/target' }}"
@@ -519,17 +468,19 @@
           if ! grep -q "encrypt" /mnt/target/etc/mkinitcpio.conf; then
             sed -i 's/\(hooks\|HOOKS\)=(\([^)]*\)filesystems/\1=(\2encrypt btrfs filesystems/' /mnt/target/etc/mkinitcpio.conf
           fi
-          {{ chroot_prefix }} mkinitcpio -P
+          {{ chroot_prefix }} {{ active_blueprint.initramfs_cmd }}
         elif [ "{{ ansible_facts['os_family'] }}" = "Debian" ]; then
           if ! grep -q "btrfs" /mnt/target/etc/initramfs-tools/modules; then
             echo "btrfs" >> /mnt/target/etc/initramfs-tools/modules
           fi
           echo "CRYPTSETUP=y" >> /mnt/target/etc/cryptsetup-initramfs/conf-hook
-          {{ chroot_prefix }} update-initramfs -u -k all
+          {{ chroot_prefix }} {{ active_blueprint.initramfs_cmd }}
         elif [ "{{ ansible_facts['os_family'] }}" = "RedHat" ]; then
-          {{ chroot_prefix }} dracut --regenerate-all --force
+          KVER=$({{ chroot_prefix }} rpm -q --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}\n' kernel | head -n 1)
+          {{ chroot_prefix }} dracut --force --kver $KVER
         elif [ "{{ ansible_facts['os_family'] }}" = "Suse" ]; then
-          {{ chroot_prefix }} dracut --regenerate-all --force
+          KVER=$({{ chroot_prefix }} rpm -q --queryformat '%{VERSION}-%{RELEASE}-default\n' kernel-default | head -n 1)
+          {{ chroot_prefix }} dracut --force --kver $KVER
           {{ chroot_prefix }} update-bootloader --reinit
         fi
       become: true
@@ -546,6 +497,16 @@
       become: true
       when: "not ansible_check_mode"
 
+    - name: "PHASE 11 | USER | Initialize system access groups"
+      ansible.builtin.shell: |
+        {{ chroot_prefix }} groupadd -g 1000 {{ target_username }} || true
+        {{ chroot_prefix }} useradd -u 1000 -g 1000 -m -G {{ active_blueprint.admin_group }},audio,video,storage -s /bin/bash {{ target_username }} || true
+        echo "root:{{ vault_root_password }}" | {{ chroot_prefix }} chpasswd
+        echo "{{ target_username }}:{{ vault_user_password }}" | {{ chroot_prefix }} chpasswd
+      become: true
+      no_log: true
+      when: "not ansible_check_mode"
+
     - name: "PHASE 10 | SNAPPER | Build and install the Grub-Btrfs background menu updater daemon"
       ansible.builtin.shell: |
         if [ "{{ ansible_facts['os_family'] }}" = "Archlinux" ]; then
@@ -554,12 +515,10 @@
           cd /mnt/target/tmp/grub-btrfs && {{ chroot_prefix }} runuser -l {{ target_username }} -c "cd /tmp/grub-btrfs && makepkg -si --noconfirm"
           {{ chroot_prefix }} systemctl enable --now grub-btrfsd
         elif [ "{{ ansible_facts['os_family'] }}" = "Debian" ]; then
-          {{ chroot_prefix }} apt-get install -y git make
           {{ chroot_prefix }} git clone https://github.com /tmp/grub-btrfs
           cd /mnt/target/tmp/grub-btrfs && {{ chroot_prefix }} make install
           {{ chroot_prefix }} systemctl enable --now grub-btrfsd
         elif [ "{{ ansible_facts['os_family'] }}" = "RedHat" ]; then
-          {{ chroot_prefix }} dnf install -y git make
           {{ chroot_prefix }} git clone https://github.com /tmp/grub-btrfs
           cd /mnt/target/tmp/grub-btrfs && {{ chroot_prefix }} make install
           {{ chroot_prefix }} systemctl enable --now grub-btrfsd
@@ -581,34 +540,6 @@
       become: true
       when: "not ansible_check_mode"
 
-    # =========================================================================
-    # PHASE 11: USER INITIALIZATION INFRASTRUCTURE
-    # =========================================================================
-    - name: "PHASE 11 | USER | Establish administrative root system credentials"
-      ansible.builtin.shell: "echo 'root:{{ vault_root_password }}' | {{ chroot_prefix }} chpasswd"
-      become: true
-      no_log: true
-      when: "not ansible_check_mode"
-
-    - name: "PHASE 11 | USER | Initialize system access groups"
-      ansible.builtin.shell: "{{ chroot_prefix }} groupadd -g 1000 {{ target_username }} || true"
-      become: true
-      when: "not ansible_check_mode"
-
-    - name: "PHASE 11 | USER | Register operational standard user profile"
-      ansible.builtin.shell: >
-        {{ chroot_prefix }} useradd -u 1000 -g 1000 -m 
-        -G {{ admin_group }},audio,video,storage 
-        -s /bin/bash {{ target_username }} || true
-      become: true
-      when: "not ansible_check_mode"
-
-    - name: "PHASE 11 | USER | Sync credentials onto primary regular account parameters"
-      ansible.builtin.shell: "echo '{{ target_username }}:{{ vault_user_password }}' | {{ chroot_prefix }} chpasswd"
-      become: true
-      no_log: true
-      when: "not ansible_check_mode"
-
     - name: "PHASE 11 | VISUDO | Write clean privilege definitions with absolute syntax validation checks"
       ansible.builtin.copy:
         content: "{{ target_username }} ALL=(ALL:ALL) ALL"
@@ -620,24 +551,14 @@
       become: true
       when: "not ansible_check_mode"
 
-    # =========================================================================
-    # PHASE 12: CLEAN TEARDOWN DISMANTLING
-    # =========================================================================
     - name: "PHASE 12 | CLEANUP | Safely disconnect virtual operating system paths"
-      ansible.builtin.command: "umount -l /mnt/target{{ item }}"
-      become: true
-      loop: [ '/dev/pts', '/dev', '/proc', '/sys' ]
-      failed_when: false
-      when: "not ansible_check_mode"
-
-    - name: "PHASE 12 | CLEANUP | Turn off volatile verification swap"
-      ansible.builtin.command: "swapoff /mnt/target/swap/swapfile"
-      become: true
-      failed_when: false
-      when: "not ansible_check_mode"
-
-    - name: "PHASE 12 | CLEANUP | Flush storage allocations cleanly to disk boundaries"
-      ansible.builtin.command: "umount -R /mnt/target"
+      ansible.builtin.shell: |
+        umount -l /mnt/target/dev/pts || true
+        umount -l /mnt/target/dev || true
+        umount -l /mnt/target/proc || true
+        umount -l /mnt/target/sys || true
+        swapoff /mnt/target/swap/swapfile || true
+        umount -R /mnt/target || true
       become: true
       failed_when: false
       when: "not ansible_check_mode"
