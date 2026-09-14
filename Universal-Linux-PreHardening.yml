@@ -2,7 +2,7 @@
 - name: "Universal Interactive Turn-Key Linux Pre-Hardening Framework (Stage 1)"
   hosts: "localhost"
   connection: "local"
-  become: true
+  become: false
   gather_facts: true
 
   vars:
@@ -114,7 +114,7 @@
 
     - name: "RECON | Map host platform operational security variables for Fedora (RedHat)"
       ansible.builtin.set_fact:
-        target_blueprint: "{{ distro_blueprint.fedora_vars }}"
+        target_blueprint: "{{ distro_blueprint.fedora_vars    }}"
         admin_group: "wheel"
       when: "ansible_facts['os_family'] == 'RedHat'"
 
@@ -123,6 +123,7 @@
         target_blueprint: "{{ distro_blueprint.suse_vars }}"
         admin_group: "wheel"
       when: "ansible_facts['os_family'] == 'Suse'"
+
     # =========================================================================
     # PHASE 3: UNIVERSAL STORAGE WIPING & GEOMETRY ALLOCATION
     # =========================================================================
@@ -159,19 +160,48 @@
       become: true
       when: "not ansible_check_mode"
     # =========================================================================
-    # PHASE 5: BTRFS STORAGE POOL INITIALIZATION
+    # PHASE 4: CRYPTOGRAPHIC DEVICE PARTITION LAYOUTS (LUKS1 vs LUKS2)
     # =========================================================================
-    - name: "BTRFS | Format unlocked primary mapper volume layout as clean Btrfs"
-      ansible.builtin.filesystem:
-        fstype: "btrfs"
-        dev: "/dev/mapper/{{ os_crypt_name }}"
-        force: true
+    - name: "LUKS | Establish volume partition indices for UEFI with Vault layout"
+      ansible.builtin.set_fact:
+        os_partition: "{{ target_disk }}{{ p_suffix }}2"
+        vault_partition: "{{ target_disk }}{{ p_suffix }}3"
+      when: 
+        - "is_uefi | bool"
+        - "has_vault | bool"
+
+    - name: "LUKS | Establish volume partition indices for UEFI single-drive layout"
+      ansible.builtin.set_fact:
+        os_partition: "{{ target_disk }}{{ p_suffix }}2"
+        vault_partition: "none"
+      when: 
+        - "is_uefi | bool"
+        - "not (has_vault | bool)"
+
+    - name: "LUKS | Establish volume partition indices for Legacy BIOS with Vault layout"
+      ansible.builtin.set_fact:
+        os_partition: "{{ target_disk }}{{ p_suffix }}1"
+        vault_partition: "{{ target_disk }}{{ p_suffix }}2"
+      when: 
+        - "not (is_uefi | bool)"
+        - "has_vault | bool"
+
+    - name: "LUKS | Establish volume partition indices for Legacy BIOS single-drive layout"
+      ansible.builtin.set_fact:
+        os_partition: "{{ target_disk }}{{ p_suffix }}1"
+        vault_partition: "none"
+      when: 
+        - "not (is_uefi | bool)"
+        - "not (has_vault | bool)"
+
+    - name: "LUKS | Form structural high-security LUKS1 volume on Main OS partition"
+      ansible.builtin.shell: "echo '{{ os_passphrase }}' | cryptsetup luksFormat --type luks1 --batch-mode {{ os_partition }}"
+      no_log: true
       when: "not ansible_check_mode"
 
-    - name: "STORAGE | Mount top-level Btrfs root pool (ID 5) to temporary staging area"
-      ansible.builtin.command: "mount /dev/mapper/{{ os_crypt_name }} /mnt"
-      register: temp_pool_mount
-      failed_when: "temp_pool_mount.rc != 0 and 'already mounted' not in temp_pool_mount.stderr"
+    - name: "LUKS | Unlock target root crypt volume context map"
+      ansible.builtin.shell: "echo '{{ os_passphrase }}' | cryptsetup open {{ os_partition }} {{ os_crypt_name }}"
+      no_log: true
       when: "not ansible_check_mode"
     # =========================================================================
     # PHASE 6: BTRFS TREE ARCHITECTURE GENERATION
@@ -269,6 +299,76 @@
       when: 
         - "ansible_facts['os_family'] == 'Suse'"
         - "not ansible_check_mode"
+    # =========================================================================
+    # PHASE 9: CONDITIONAL LUKS2 VAULT GENERATION
+    # =========================================================================
+    - name: "VAULT | Form enterprise LUKS2 container using primary Argon2id algorithms on partition 2"
+      ansible.builtin.shell: "echo '{{ vault_passphrase }}' | cryptsetup luksFormat --type luks2 --pbkdf argon2id --batch-mode {{ vault_partition }}"
+      no_log: true
+      when: 
+        - "not ansible_check_mode"
+        - "has_vault | bool"
+
+    - name: "VAULT | Ensure secure encryption key storage directory exists"
+      ansible.builtin.file:
+        path: "/mnt/target/etc/secure"
+        state: "directory"
+        owner: "root"
+        group: "root"
+        mode: "0700"
+      when: 
+        - "not ansible_check_mode"
+        - "has_vault | bool"
+
+    - name: "VAULT | Generate a random 32-byte cryptographically secure hardware system vault key"
+      ansible.builtin.command: "dd if=/dev/urandom of=/mnt/target/etc/secure/vault.key bs=1 count=32"
+      when: 
+        - "not ansible_check_mode"
+        - "has_vault | bool"
+
+    - name: "VAULT | Lock structural file signatures strictly to root level privileges"
+      ansible.builtin.file:
+        path: "/mnt/target/etc/secure/vault.key"
+        owner: "root"
+        group: "root"
+        mode: "0400"
+      when: 
+        - "not ansible_check_mode"
+        - "has_vault | bool"
+
+    - name: "VAULT | Inject the generated system keyfile into secondary slot of vault partition"
+      ansible.builtin.shell: "echo '{{ vault_passphrase }}' | cryptsetup luksAddKey --batch-mode {{ vault_partition }} /mnt/target/etc/secure/vault.key"
+      no_log: true
+      when: 
+        - "not ansible_check_mode"
+        - "has_vault | bool"
+
+    - name: "VAULT | Unlock vault mapper channel utilizing the newly registered system keyfile"
+      ansible.builtin.command: "cryptsetup open {{ vault_partition }} {{ vault_crypt_name }} --key-file /mnt/target/etc/secure/vault.key"
+      when: 
+        - "not ansible_check_mode"
+        - "has_vault | bool"
+
+    - name: "VAULT | Extract the hardware UUID parameter block from vault partition 2"
+      ansible.builtin.command: "blkid -s UUID -o value {{ vault_partition }}"
+      register: "vault_uuid_raw"
+      when: 
+        - "not ansible_check_mode"
+        - "has_vault | bool"
+
+    - name: "VAULT | Format the exposed vault target mapped space as standard Ext4 storage"
+      ansible.builtin.filesystem:
+        fstype: "ext4"
+        dev: "/dev/mapper/{{ vault_crypt_name }}"
+      when: 
+        - "not ansible_check_mode"
+        - "has_vault | bool"
+
+    - name: "VAULT | Securely close the open device mapping to clear tracking descriptors from active RAM"
+      ansible.builtin.command: "cryptsetup close {{ vault_crypt_name }}"
+      when: 
+        - "not ansible_check_mode"
+        - "has_vault | bool"
     # =========================================================================
     # PHASE 10: CHROOT SYSTEMS INTERFACES & RUNTIME DNS
     # =========================================================================
@@ -422,100 +522,26 @@
         validate: "visudo -cf %s"
       when: "not ansible_check_mode"
     # =========================================================================
-    # PHASE 12: CRYPTO HOOKS & BOOT COMPILATION
+    # PHASE 13: SAFE TEARDOWN CLEANUP
     # =========================================================================
-    - name: Generate the early userspace unlocking keyfile inside the encrypted container
-      ansible.builtin.command: "dd bs=512 count=4 if=/dev/urandom of=/mnt/target/etc/secure/cryptroot.key"
+    - name: Unmount virtual API kernel filesystems to unlock the target structure workspace
+      ansible.builtin.command: "umount -l /mnt/target{{ item }}"
+      loop: [ '/dev/pts', '/dev', '/proc', '/sys' ]
       when: "not ansible_check_mode"
 
-    - name: Lock early userspace unlock key file signatures strictly to root level privileges
-      ansible.builtin.file:
-        path: "/mnt/target/etc/secure/cryptroot.key"
-        owner: "root"
-        group: "root"
-        mode: "0600"
-      when: "not ansible_check_mode"
-
-    - name: Inject early userspace unlock key block straight into main LUKS container keyslot
-      ansible.builtin.shell: "echo '{{ os_passphrase }}' | cryptsetup luksAddKey --batch-mode {{ os_partition }} /mnt/target/etc/secure/cryptroot.key"
-      no_log: true
-      when: "not ansible_check_mode"
-
-    - name: Inject early userspace keyfile array parameters into mkinitcpio configuration (Arch Linux)
-      ansible.builtin.lineinfile:
-        path: /mnt/target/etc/mkinitcpio.conf
-        regexp: '^FILES='
-        line: 'FILES=(/etc/secure/cryptroot.key)'
-      when: 
-        - "ansible_facts['os_family'] == 'Archlinux'"
-        - "not ansible_check_mode"
-
-    - name: Inject critical crypto modules and hooks into mkinitcpio configuration (Arch Linux)
-      ansible.builtin.lineinfile:
-        path: /mnt/target/etc/mkinitcpio.conf
-        regexp: '^HOOKS='
-        line: 'HOOKS=(base udev autodetect modconf kms keyboard keymap consolefont block encrypt btrfs filesystems fsck)'
-      when: 
-        - "ansible_facts['os_family'] == 'Archlinux'"
-        - "not ansible_check_mode"
-
-    - name: Inject early userspace keyfile extraction rules into Dracut profile trees (Fedora/openSUSE)
-      ansible.builtin.copy:
-        content: |
-          install_items+="/etc/secure/cryptroot.key"
-        dest: "/mnt/target/etc/dracut.conf.d/99-cryptroot.conf"
-        owner: "root"
-        group: "root"
-        mode: "0644"
-      when: 
-        - "ansible_facts['os_family'] in ['RedHat', 'Suse']"
-        - "not ansible_check_mode"
-
-    - name: Compile hardened initramfs boot images inside targeted runtime environment (Arch Linux)
-      ansible.builtin.command: arch-chroot /mnt/target mkinitcpio -P
-      when: 
-        - "ansible_facts['os_family'] == 'Archlinux'"
-        - "not ansible_check_mode"
-
-    - name: Inject critical encryption parameters into core GRUB configurations
-      ansible.builtin.lineinfile:
-        path: /mnt/target/etc/default/grub
-        regexp: "{{ item.regexp }}"
-        line: "{{ item.line }}"
-      loop:
-        - { regexp: '^#?GRUB_ENABLE_CRYPTODISK=', line: 'GRUB_ENABLE_CRYPTODISK=y' }
-        - { regexp: '^GRUB_CMDLINE_LINUX=', line: 'GRUB_CMDLINE_LINUX="cryptdevice={{ os_partition }}:{{ os_crypt_name }} root=/dev/mapper/{{ os_crypt_name }} rootfstype=btrfs rootflags=subvol=@ rw"' }
-        - { regexp: '^GRUB_CMDLINE_LINUX_DEFAULT=', line: 'GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet lsm=landlock,lockdown,yama,apparmor,bpf"' }
-      when: "not ansible_check_mode"
-
-    - name: Deploy physical GRUB engine mapping blocks based on firmware mode
-      ansible.builtin.command: "{{ chroot_cmd }} {{ 'grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB --recheck' if is_uefi | bool else 'grub-install --target=i386-pc --recheck ' + target_disk }}"
-      when: "not ansible_check_mode"
-
-    - name: Compile final GRUB environment execution maps with snapshot recovery options
-      ansible.builtin.command: "{{ chroot_cmd }} {{ 'grub-mkconfig -o /boot/grub/grub.cfg' if (ansible_facts['os_family'] == 'Archlinux' or ansible_facts['os_family'] == 'RedHat') else 'update-grub' }}"
-      when: "not ansible_check_mode"
-
-    - name: Actively enable system desktop services and bluetooth managers inside environment
-      ansible.builtin.command: "{{ chroot_cmd }} systemctl enable {{ item }}"
-      loop: [ 'NetworkManager', 'lightdm', 'bluetooth', 'firewalld', 'tuned', 'grub-btrfsd' ]
+    - name: "CLEANUP | Run a systematic unmount sweep to flush storage memory buffers cleanly"
+      ansible.builtin.command: "umount -R /mnt/target"
       failed_when: false
       when: "not ansible_check_mode"
 
-    - name: Regenerate initramfs boot images with structural encryption hooks (Debian)
-      ansible.builtin.command: chroot /mnt/target update-initramfs -u -k all
-      when: 
-        - "ansible_facts['os_family'] == 'Debian'"
-        - "not ansible_check_mode"
-
-    - name: "CONNECTOR | Write active local deployment loop inventory for Stage 2 stacking"
-      ansible.builtin.copy:
-        content: |
-          [hardened_nodes]
-          localhost ansible_connection=local
-        dest: "/mnt/target/home/{{ target_username }}/hosts.ini"
-        owner: "1000"
-        group: "1000"
-        mode: "0644"
+  handlers:
+    - name: "Reload Systemd Configuration"
+      ansible.builtin.systemd:
+        daemon_reload: true
       when: "not ansible_check_mode"
 
+    - name: "Reload Kernel Parameters"
+      ansible.builtin.command: "sysctl --system"
+      failed_when: false
+      when: "not ansible_check_mode"
+ 
