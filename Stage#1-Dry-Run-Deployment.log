@@ -1,0 +1,244 @@
+[vega@SecEngr Pre-Zero-Trust-Linux-Hardening]$ ansible-playbook -i hosts.ini Universal-Linux-PreHardening.yml --check -K
+BECOME password: 
+
+PLAY [Universal Interactive Turn-Key Linux Pre-Hardening Framework (Stage 1)] *****************************************************************************************
+
+TASK [Gathering Facts] ************************************************************************************************************************************************
+ok: [localhost]
+
+TASK [PHASE 1 | PROMPT | Gather target disk selection] ****************************************************************************************************************
+[PHASE 1 | PROMPT | Gather target disk selection]
+[?] Enter absolute block device target to partition (e.g., /dev/sda):
+ok: [localhost]
+
+TASK [PHASE 1 | PROMPT | Gather secure vault sizing metrics] **********************************************************************************************************
+[PHASE 1 | PROMPT | Gather secure vault sizing metrics]
+Enter the size for the Vault partition in GB (5 to 60, or enter 0 to SKIP) [Default: 50]:
+ok: [localhost]
+
+TASK [PHASE 1 | PROMPT | Gather Main OS Passphrase] *******************************************************************************************************************
+[PHASE 1 | PROMPT | Gather Main OS Passphrase]
+Enter Master Passphrase for Main OS Partition (Typed at boot) (output is hidden):
+ok: [localhost]
+
+TASK [PHASE 1 | PROMPT | Gather Vault Passphrase] *********************************************************************************************************************
+[PHASE 1 | PROMPT | Gather Vault Passphrase]
+Enter Master Passphrase for Secure Vault Partition (Bypassed if size is 0) (output is hidden):
+ok: [localhost]
+
+TASK [PHASE 1 | PROMPT | Gather ROOT Administrative Password] *********************************************************************************************************
+[PHASE 1 | PROMPT | Gather ROOT Administrative Password]
+Enter System Administrative ROOT Password (output is hidden):
+ok: [localhost]
+
+TASK [PHASE 1 | PROMPT | Gather Account Username] *********************************************************************************************************************
+[PHASE 1 | PROMPT | Gather Account Username]
+[?] Enter account username for regular user [vega]:
+ok: [localhost]
+
+TASK [PHASE 1 | PROMPT | Gather Account Password] *********************************************************************************************************************
+[PHASE 1 | PROMPT | Gather Account Password]
+Enter the account password for the regular user (output is hidden):
+ok: [localhost]
+
+TASK [PHASE 2 | VALIDATION | Ensure Vault size constraints match architecture rules] **********************************************************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [PHASE 2 | RECON | Validate targeted installation disk path exists on system] ************************************************************************************
+ok: [localhost]
+
+TASK [PHASE 2 | RECON | Detect active motherboard boot firmware schema] ***********************************************************************************************
+ok: [localhost]
+
+TASK [PHASE 2 | RECON | Map environment path layout syntax strings] ***************************************************************************************************
+ok: [localhost]
+
+TASK [PHASE 2 | RECON | Compute adaptive swap footprint requirements] *************************************************************************************************
+ok: [localhost]
+
+TASK [PHASE 2 | STORAGE | Ingest multi-distribution subvolume blueprints] *********************************************************************************************
+ok: [localhost]
+
+TASK [PHASE 2 | RECON | Select subvolume blueprint matrix based on host distribution] *********************************************************************************
+ok: [localhost]
+
+TASK [PHASE 3 | STORAGE | Clear system partition records and write clean target maps] *********************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 3 | LUKS | Map active logical disk workspace index structures] ********************************************************************************************
+ok: [localhost]
+
+TASK [PHASE 4 | LUKS | Establish secure container volume over Main OS workspace] **************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 4 | LUKS | Map early unlocked kernel channel endpoint descriptor] *****************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 4 | LUKS | Extract live machine storage hardware UUID tracking strings] ***********************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 5 | BTRFS | Initialize structural platform filesystem pool] ***********************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 5 | STORAGE | Attach transient master pool mount hook] ****************************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 5 | STORAGE | Carve out full 13-subvolume architecture allocations] ***************************************************************************************
+skipping: [localhost] => (item={'name': '@', 'dest': '/'}) 
+skipping: [localhost] => (item={'name': '@home', 'dest': '/home'}) 
+skipping: [localhost] => (item={'name': '@log', 'dest': '/var/log'}) 
+skipping: [localhost] => (item={'name': '@swap', 'dest': '/swap'}) 
+skipping: [localhost] => (item={'name': '@portables', 'dest': '/var/lib/portables'}) 
+skipping: [localhost] => (item={'name': '@machines', 'dest': '/var/lib/machines'}) 
+skipping: [localhost] => (item={'name': '@snapshots', 'dest': '/.snapshots'}) 
+skipping: [localhost] => (item={'name': '@homesnapshots', 'dest': '/home/.snapshots'}) 
+skipping: [localhost] => (item={'name': '@cache', 'dest': '/var/cache/pacman/pkg'}) 
+skipping: [localhost] => (item={'name': '@docker', 'dest': '/var/lib/docker'}) 
+skipping: [localhost] => (item={'name': '@flatpak', 'dest': '/var/lib/flatpak'}) 
+skipping: [localhost] => (item={'name': '@libvirt', 'dest': '/var/lib/libvirt/images'}) 
+skipping: [localhost] => (item={'name': '@srv', 'dest': '/srv'}) 
+skipping: [localhost]
+
+TASK [PHASE 5 | STORAGE | openSUSE SPECIFIC | Instantiate internal Snapper snapshot chamber] **************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 5 | STORAGE | Dismount master pool to lock storage layout parameters] *************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 5 | STORAGE | Enforce target deployment folder structures] ************************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 5 | STORAGE | Mount active base root subvolume framework layer] *******************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 5 | STORAGE | Sequentially structure inner parent system path folders] ************************************************************************************
+skipping: [localhost] => (item={'name': '@', 'dest': '/'}) 
+skipping: [localhost] => (item={'name': '@home', 'dest': '/home'}) 
+skipping: [localhost] => (item={'name': '@log', 'dest': '/var/log'}) 
+skipping: [localhost] => (item={'name': '@swap', 'dest': '/swap'}) 
+skipping: [localhost] => (item={'name': '@portables', 'dest': '/var/lib/portables'}) 
+skipping: [localhost] => (item={'name': '@machines', 'dest': '/var/lib/machines'}) 
+skipping: [localhost] => (item={'name': '@snapshots', 'dest': '/.snapshots'}) 
+skipping: [localhost] => (item={'name': '@homesnapshots', 'dest': '/home/.snapshots'}) 
+skipping: [localhost] => (item={'name': '@cache', 'dest': '/var/cache/pacman/pkg'}) 
+skipping: [localhost] => (item={'name': '@docker', 'dest': '/var/lib/docker'}) 
+skipping: [localhost] => (item={'name': '@flatpak', 'dest': '/var/lib/flatpak'}) 
+skipping: [localhost] => (item={'name': '@libvirt', 'dest': '/var/lib/libvirt/images'}) 
+skipping: [localhost] => (item={'name': '@srv', 'dest': '/srv'}) 
+skipping: [localhost]
+
+TASK [PHASE 5 | STORAGE | Securely bind remaining 12 subvolumes to distribution-specific paths] ***********************************************************************
+skipping: [localhost] => (item={'name': '@', 'dest': '/'}) 
+skipping: [localhost] => (item={'name': '@home', 'dest': '/home'}) 
+skipping: [localhost] => (item={'name': '@log', 'dest': '/var/log'}) 
+skipping: [localhost] => (item={'name': '@swap', 'dest': '/swap'}) 
+skipping: [localhost] => (item={'name': '@portables', 'dest': '/var/lib/portables'}) 
+skipping: [localhost] => (item={'name': '@machines', 'dest': '/var/lib/machines'}) 
+skipping: [localhost] => (item={'name': '@snapshots', 'dest': '/.snapshots'}) 
+skipping: [localhost] => (item={'name': '@homesnapshots', 'dest': '/home/.snapshots'}) 
+skipping: [localhost] => (item={'name': '@cache', 'dest': '/var/cache/pacman/pkg'}) 
+skipping: [localhost] => (item={'name': '@docker', 'dest': '/var/lib/docker'}) 
+skipping: [localhost] => (item={'name': '@flatpak', 'dest': '/var/lib/flatpak'}) 
+skipping: [localhost] => (item={'name': '@libvirt', 'dest': '/var/lib/libvirt/images'}) 
+skipping: [localhost] => (item={'name': '@srv', 'dest': '/srv'}) 
+skipping: [localhost]
+
+TASK [PHASE 5 | STORAGE | Format and mount structural UEFI boot partition (ESP)] **************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 6 | STORAGE | Create zero-byte footprint file mapping within isolated path] *******************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 6 | STORAGE | Enforce absolute Copy-on-Write exemption on empty mapping] **********************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 6 | STORAGE | Explicitly strip compression processing calls] **********************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 6 | STORAGE | Hydrate actual bit blocks based on adaptive system memory footprints] ***********************************************************************
+skipping: [localhost]
+
+TASK [PHASE 6 | STORAGE | Frame valid swap header signatures onto built mapping] **************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 6 | STORAGE | Turn on swap to verify operational performance limits] **************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 7 | BOOTSTRAP | Install foundational system tools non-interactively] **************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 8 | VAULT | Form enterprise LUKS2 container using primary Argon2id algorithms] ****************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 8 | VAULT | Ensure secure encryption key storage directory exists] ****************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 8 | VAULT | Generate a random 32-byte cryptographically secure system vault key] **************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 8 | VAULT | Lock system keyfile signatures strictly to root privileges] ***********************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 8 | VAULT | Inject the generated system keyfile into secondary slot of vault partition] *******************************************************************
+skipping: [localhost]
+
+TASK [PHASE 8 | VAULT | Unlock vault mapper channel utilizing the newly registered system keyfile] ********************************************************************
+skipping: [localhost]
+
+TASK [PHASE 8 | VAULT | Extract the hardware UUID parameter block from vault partition] *******************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 8 | VAULT | Format the exposed vault target mapped space as clean BTRFS storage] **************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 8 | VAULT | Pre-carve required Btrfs secure vault container subvolume hierarchy] **************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 8 | VAULT | Securely close the open device mapping to clear tracking descriptors from active RAM] *********************************************************
+skipping: [localhost]
+
+TASK [PHASE 9 | CHROOT | Bind peripheral API kernel filesystems into environment framework] ***************************************************************************
+skipping: [localhost] => (item={'src': '/dev', 'path': '/dev'}) 
+skipping: [localhost] => (item={'src': '/dev/pts', 'path': '/dev/pts'}) 
+skipping: [localhost] => (item={'src': '/proc', 'path': '/proc'}) 
+skipping: [localhost] => (item={'src': '/sys', 'path': '/sys'}) 
+skipping: [localhost]
+
+TASK [PHASE 9 | CHROOT | Sync live network tracking configs] **********************************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 9 | SYSTEM CONFIG | Populate static data layout tracking metrics (/etc/fstab)] ****************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 9 | SYSTEM CONFIG | Map target encryption unlock keys (/etc/crypttab)] ************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 10 | CHROOT | Build configuration macros based on target profile architecture] ****************************************************************************
+ok: [localhost]
+
+TASK [PHASE 10 | BOOTLOADER | Execute core GRUB hardware environment injection maps] **********************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 10 | BOOTLOADER | Patch configuration variables to prompt for core security keys] *************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 10 | INITRAMFS | Inject crypto modules and compile runtime kernel image hooks] ****************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 10 | BOOTLOADER REGENERATION | Compile clean final operational system boot records] ***********************************************************************
+skipping: [localhost]
+
+TASK [PHASE 11 | USER | Initialize system access groups] **************************************************************************************************************
+skipping: [localhost]
+
+TASK [PHASE 11 | VISUDO | Write clean privilege definitions with absolute syntax validation checks] *******************************************************************
+skipping: [localhost]
+
+TASK [PHASE 12 | CLEANUP | Safely disconnect virtual operating system paths] ******************************************************************************************
+skipping: [localhost]
+
+PLAY RECAP ************************************************************************************************************************************************************
+localhost                  : ok=17   changed=0    unreachable=0    failed=0    skipped=42   rescued=0    ignored=0   

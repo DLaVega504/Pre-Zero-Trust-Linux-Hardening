@@ -1,8 +1,7 @@
-# vars_mapping.yml
 ---
 arch_vars:
   admin_group: "wheel"
-  bootstrap_packages: "base base-devel linux linux-firm btrfs-progs cryptsetup grub efibootmgr snapper sudo nano vim networkmanager firewalld lightdm lightdm-gtk-greeter xorg-server xfce4 inotify-tools git make"
+  bootstrap_packages: "base base-devel linux linux-firmware btrfs-progs cryptsetup grub efibootmgr snapper sudo nano vim networkmanager firewalld fail2ban lightdm lightdm-gtk-greeter xorg-server xfce4 inotify-tools git make rsync aide"
   kernel_version: "linux"
   initramfs_cmd: "mkinitcpio -P"
   subvolumes:
@@ -22,11 +21,11 @@ arch_vars:
 
 debian_vars:
   admin_group: "sudo"
-  bootstrap_packages: "btrfs-progs,cryptsetup,cryptsetup-initramfs,grub-pc,grub-efi-amd64,efibootmgr,sudo,network-manager,firewalld,lightdm,xfce4,vim,snapper,inotify-tools,git,make"
+  bootstrap_packages: "base-files systemd-sysv linux-image-amd64 linux-headers-amd64 btrfs-progs cryptsetup cryptsetup-initramfs grub-pc grub-efi-amd64 efibootmgr sudo network-manager firewalld fail2ban lightdm xfce4 vim snapper inotify-tools git make rsync aide tripwire"
   kernel_version: "linux-image-amd64"
   initramfs_cmd: "update-initramfs -u -k all"
   subvolumes:
-    - { name: "@", dest: "/" }
+    - { name: "@rootfs", dest: "/" }
     - { name: "@home", dest: "/home" }
     - { name: "@log", dest: "/var/log" }
     - { name: "@swap", dest: "/swap" }
@@ -34,49 +33,42 @@ debian_vars:
     - { name: "@machines", dest: "/var/lib/machines" }
     - { name: "@snapshots", dest: "/.snapshots" }
     - { name: "@homesnapshots", dest: "/home/.snapshots" }
-    - { name: "@cache", dest: "/var/cache/apt" }
+    - { name: "@cache", dest: "/var/cache/apt/archives" }
     - { name: "@docker", dest: "/var/lib/docker" }
-    - { name: "@flatpak", dest: "/var/lib/flatpak" }
-    - { name: "@libvirt", dest: "/var/lib/libvirt/images" }
     - { name: "@srv", dest: "/srv" }
 
 fedora_vars:
   admin_group: "wheel"
-  bootstrap_packages: "kernel,kernel-core,kernel-modules,btrfs-progs,cryptsetup,grub2-efi,grub2-pc,efibootmgr,networkmanager,firewalld,lightdm,vim,snapper,inotify-tools,git,make"
+  bootstrap_packages: "kernel kernel-core kernel-modules btrfs-progs cryptsetup grub2-efi grub2-pc efibootmgr networkmanager firewalld fail2ban lightdm vim snapper inotify-tools git make rsync aide tripwire"
   kernel_version: "kernel"
+  initramfs_cmd: "dracut --regenerate-all --force"
+  subvolumes:
+    - { name: "root", dest: "/" }
+    - { name: "home", dest: "/home" }
+    - { name: "log", dest: "/var/log" }
+    - { name: "swap", dest: "/swap" }
+    - { name: "portables", dest: "/var/lib/portables" }
+    - { name: "machines", dest: "/var/lib/machines" }
+    - { name: "snapshots", dest: "/.snapshots" }
+    - { name: "homesnapshots", dest: "/home/.snapshots" }
+    - { name: "cache", dest: "/var/cache/dnf" }
+    - { name: "containers", dest: "/var/lib/containers" }
+
+suse_vars:
+  admin_group: "wheel"
+  bootstrap_packages: "btrfs-progs cryptsetup grub2 grub2-x86_64-efi efibootmgr NetworkManager firewalld fail2ban lightdm vim snapper inotify-tools grub2-snapper-plugin git make kernel-default rsync aide tripwire"
+  kernel_version: "kernel-default"
   initramfs_cmd: "dracut --regenerate-all --force"
   subvolumes:
     - { name: "@", dest: "/" }
     - { name: "@home", dest: "/home" }
-    - { name: "@log", dest: "/var/log" }
+    - { name: "@var_log", dest: "/var/log" }
     - { name: "@swap", dest: "/swap" }
     - { name: "@portables", dest: "/var/lib/portables" }
     - { name: "@machines", dest: "/var/lib/machines" }
     - { name: "@snapshots", dest: "/.snapshots" }
     - { name: "@homesnapshots", dest: "/home/.snapshots" }
-    - { name: "@cache", dest: "/var/cache/dnf" }
+    - { name: "@var_cache", dest: "/var/cache" }
     - { name: "@docker", dest: "/var/lib/docker" }
-    - { name: "@flatpak", dest: "/var/lib/flatpak" }
-    - { name: "@libvirt", dest: "/var/lib/libvirt/images" }
-    - { name: "@srv", dest: "/srv" }
-
-suse_vars:
-  admin_group: "wheel"
-  bootstrap_packages: "btrfs-progs cryptsetup grub2 grub2-x86_64-efi efibootmgr NetworkManager firewalld lightdm vim snapper inotify-tools grub2-snapper-plugin git make kernel-default"
-  kernel_version: "kernel-default"
-  initramfs_cmd: "dracut --regenerate-all --force"
-  subvolumes:
-    - { name: "@", dest: "/.snapshots/1/snapshot" } 
-    - { name: "@home", dest: "/home" }
-    - { name: "@log", dest: "/var/log" }
-    - { name: "@swap", dest: "/swap" }
-    - { name: "@portables", dest: "/var/lib/portables" }
-    - { name: "@machines", dest: "/var/lib/machines" }
-    - { name: "@snapshots", dest: "/.snapshots" }
-    - { name: "@homesnapshots", dest: "/home/.snapshots" }
-    - { name: "@cache", dest: "/var/cache/zypp" }
-    - { name: "@docker", dest: "/var/lib/docker" }
-    - { name: "@flatpak", dest: "/var/lib/flatpak" }
-    - { name: "@libvirt", dest: "/var/lib/libvirt/images" }
     - { name: "@srv", dest: "/srv" }
 
