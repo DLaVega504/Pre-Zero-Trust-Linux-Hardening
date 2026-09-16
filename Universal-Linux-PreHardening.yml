@@ -492,6 +492,34 @@
       become: true
       when: "not ansible_check_mode"
 
+    # =========================================================================
+    # PHASE 11.5 | ZRAM PROVISIONING | TIER 1 HYBRID SYSTEM COMPRESSION MATRIX
+    # =========================================================================
+    - name: "PHASE 11.5 | ZRAM | Ensure systemd-zram-generator parent tracking path exists"
+      ansible.builtin.file:
+        path: "/mnt/target/etc/systemd"
+        state: "directory"
+        owner: "root"
+        group: "root"
+        mode: "0755"
+      become: true
+      when: "not ansible_check_mode"
+
+    - name: "PHASE 11.5 | ZRAM | Deploy optimized, Stage-2 ready compressed memory configuration"
+      ansible.builtin.copy:
+        content: |
+          [zram0]
+          # Stacking Safety Valve: Dynamically bounds ZRAM to half of physical RAM or a 2GB ceiling max
+          zram-size = min(ram / 2, 2048)
+          compression-algorithm = lz4
+        dest: "/mnt/target/etc/systemd/zram-generator.conf"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      become: true
+      when: "not ansible_check_mode"
+
+
     - name: "PHASE 12 | CLEANUP | Safely disconnect virtual operating system paths"
       ansible.builtin.shell: |
         umount -l /mnt/target/dev/pts || true
