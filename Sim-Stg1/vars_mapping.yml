@@ -4,6 +4,7 @@ distro_blueprint:
   # ARCH LINUX BLUEPRINT CONFIGURATION PROFILE (LYNIS 81 Posture Foundation)
   # =========================================================================
   arch_vars:
+    # Explicit multi-kernel baseline + compilation tooling headers
     bootstrap_packages: "base linux linux-headers linux-hardened linux-headers-hardened linux-firmware intel-ucode amd-ucode"
     subvolumes:
       - { name: "@", dest: "/" }
@@ -64,6 +65,7 @@ distro_blueprint:
   suse_vars:
     bootstrap_packages: "kernel-default kernel-default-devel openSUSE-release"
     subvolumes:
+      # Enforces strict compatibility with openSUSE's transactional root model
       - { name: "@", dest: "/" }
       - { name: "@home", dest: "/home" }
       - { name: "@root", dest: "/root" }

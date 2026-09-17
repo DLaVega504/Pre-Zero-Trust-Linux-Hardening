@@ -1,0 +1,140 @@
+---
+- name: "Standalone Operational Hardening & Substrate Verification Loop (Stage 1 Verification)"
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: true
+
+  vars:
+    os_crypt_name: "cryptroot"
+    staging_root: "/mnt/target"
+
+  tasks:
+    # =========================================================================
+    # AUDIT LAYER 1: STORAGE COMPONENT BOUNDS
+    # =========================================================================
+    - name: "AUDIT STORAGE | Check active staging directory root mount status"
+      ansible.builtin.command: "mountpoint -q {{ staging_root }}"
+      register: staging_root_mount
+      failed_when: false
+      changed_when: false
+
+    - name: "ENFORCE STORAGE | Validate target staging directory presence"
+      ansible.builtin.assert:
+        that:
+          - "staging_root_mount.rc == 0"
+        msg: "❌ CRITICAL AUDIT FAILURE: Operating system staging target directory is not mounted at {{ staging_root }}!"
+
+    - name: "AUDIT CRYPTO | Verify cryptographic mapper loop channel is active"
+      ansible.builtin.command: "test -e /dev/mapper/{{ os_crypt_name }}"
+      register: crypt_channel_check
+      failed_when: false
+      changed_when: false
+
+    - name: "ENFORCE CRYPTO | Validate master OS loop container matrix integrity"
+      ansible.builtin.assert:
+        that:
+          - "crypt_channel_check.rc == 0"
+        msg: "❌ CRITICAL AUDIT FAILURE: The core container mapper channel '{{ os_crypt_name }}' is inactive!"
+    # =========================================================================
+    # AUDIT LAYER 2: SECURITY FILE METADATA & FILESYSTEM RULES
+    # =========================================================================
+    - name: "AUDIT SWAP | Inspect layout attributes of allocated swapfile space"
+      ansible.builtin.stat:
+        path: "{{ staging_root }}/swap/swapfile"
+      register: swap_file_stat
+
+    - name: "ENFORCE SWAP | Validate absolute file presence and permissions boundaries"
+      ansible.builtin.assert:
+        that:
+          - "swap_file_stat.stat.exists | bool"
+          - "swap_file_stat.stat.mode == '0600'"
+          - "swap_file_stat.stat.uid == 0"
+          - "swap_file_stat.stat.gid == 0"
+        msg: "❌ CRITICAL AUDIT FAILURE: System swapfile is missing, insecurely owned, or lacks Mode 0600 isolation!"
+
+    - name: "AUDIT SWAP | Verify Btrfs Copy-on-Write (+C) exemption flag status"
+      ansible.builtin.command: "lsattr {{ staging_root }}/swap/swapfile"
+      register: swap_attributes
+      changed_when: false
+
+    - name: "ENFORCE SWAP | Validate non-CoW metadata persistence structures"
+      ansible.builtin.assert:
+        that:
+          - "'C' in swap_attributes.stdout"
+        msg: "❌ CRITICAL AUDIT FAILURE: Swapfile has lost its mandatory Copy-on-Write (+C) exemption attribute!"
+    - name: "AUDIT PRIVILEGE | Inspect administrative visudo parameter drop-in files"
+      ansible.builtin.command: "find {{ staging_root }}/etc/sudoers.d/ -type f"
+      register: sudoers_files
+      changed_when: false
+
+    - name: "ENFORCE PRIVILEGE | Validate permissions constraints over sudoers descriptors"
+      ansible.builtin.shell: |
+        if [ -n "{{ sudoers_files.stdout }}" ]; then
+          stat -c "%a" {{ item }}
+        fi
+      loop: "{{ sudoers_files.stdout_lines }}"
+      register: sudoers_modes
+      changed_when: false
+      failed_when: false
+
+    - name: "ENFORCE PRIVILEGE | Assert that visudo overrides reject group/world execution"
+      ansible.builtin.assert:
+        that:
+          - "item.stdout == '440' or item.stdout == '400'"
+        msg: "❌ CRITICAL AUDIT FAILURE: Sudoers drop-in files have insecure mode definitions!"
+      loop: "{{ sudoers_modes.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+    # =========================================================================
+    # AUDIT LAYER 3: SYSTEM CONFIGURATION BALANCING METRICS
+    # =========================================================================
+    - name: "AUDIT LEDGERS | Parse fstab deployment configurations for crypt maps"
+      ansible.builtin.command: "grep -q '/dev/mapper/{{ os_crypt_name }}' {{ staging_root }}/etc/fstab"
+      register: fstab_crypt_audit
+      failed_when: false
+      changed_when: false
+
+    - name: "AUDIT LEDGERS | Parse crypttab configurations for physical hardware mapping loops"
+      ansible.builtin.command: "grep -q '{{ os_crypt_name }}' {{ staging_root }}/etc/crypttab"
+      register: crypttab_audit
+      failed_when: false
+      changed_when: false
+
+    - name: "ENFORCE LEDGERS | Validate table file synchronizations"
+      ansible.builtin.assert:
+        that:
+          - "fstab_crypt_audit.rc == 0"
+          - "crypttab_audit.rc == 0"
+        msg: "❌ CRITICAL AUDIT FAILURE: Target storage infrastructure configurations (/etc/fstab or crypttab) are broken!"
+
+    - name: "AUDIT NETWORKING | Verify hostname identity structures match deployment parameters"
+      ansible.builtin.command: "cat {{ staging_root }}/etc/hostname"
+      register: hostname_audit
+      changed_when: false
+
+    - name: "ENFORCE NETWORKING | Assert system hostname structure is populated"
+      ansible.builtin.assert:
+        that:
+          - "hostname_audit.stdout | length > 0"
+        msg: "❌ CRITICAL AUDIT FAILURE: System /etc/hostname configuration vector is empty!"
+
+    # =========================================================================
+    # SYSTEM CONSOLE RECAP HARDENING SIGNATURE DEPLOYMENT CARD
+    # =========================================================================
+    - name: "LOGGING | Output ultimate security baseline status matrix card"
+      ansible.builtin.debug:
+        msg:
+          - "==========================================================================="
+          - "                    STAGE 1 AUDIT HARDENING VERIFIED                       "
+          - "==========================================================================="
+          - "[✔] Master Storage Decryption Substrate... VERIFIED sound and initialized."
+          - "[✔] Staging Directory Root Bind Space..... VERIFIED cleanly mounted."
+          - "[✔] Hardened Memory Allocation Swap Nodes. VERIFIED Mode 0600 +C Exempt."
+          - "[✔] Sudoers Multi-User Privilege Chains... VERIFIED Mode 0440 Secured."
+          - "[✔] Storage Ledgers Tables Sync matrices.. VERIFIED compiled matching maps."
+          - "[✔] Networking Stack Identity Parameters.. VERIFIED hostname locked."
+          - "---------------------------------------------------------------------------"
+          - "                       System Good to Go, REBOOT                           "
+          - "==========================================================================="
+
