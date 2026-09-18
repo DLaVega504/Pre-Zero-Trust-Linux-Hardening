@@ -17,7 +17,6 @@
     target_username: "{{ user_prompt.user_input | default('vega', true) }}"
     vault_user_password: "{{ user_pass_prompt.user_input | default('', true) }}"
     target_hostname: "{{ hostname_prompt.user_input | default('fortress-node', true) }}"
-
   tasks:
     # =========================================================================
     # PRE-FLIGHT LIVE ISO ENVIRONMENT HYDRATION ENGINE
@@ -35,12 +34,12 @@
         elif command -v zypper >/dev/null 2>&1; then
           zypper --non-interactive install python3 python3-pip gptfdisk ansible
         fi
-      become: true # Enforces root status ONLY for installing tools if needed
+      become: true
       changed_when: false
       failed_when: false
 
     - name: "PRE-FLIGHT | Safely initialize system environment fact discovery loops"
-      ansible.builtin.setup: # Gathers system variables safely without triggering nested sudo traps
+      ansible.builtin.setup:
       become: false # <--- CRITICAL FIX: Eliminates the double privilege prompt loop completely
     # =========================================================================
     # PHASE 1 | AUTOMATED HARDWARE, METADATA & RECONNAISSANCE SCANNING ENGINE
@@ -99,8 +98,6 @@
     - name: "SCAN | Compute dynamic cryptographic and memory bounding recommendations"
       ansible.builtin.set_fact:
         discovered_disk_size_raw: "{{ ansible_facts['devices'][auto_disk_discovery.stdout | default('sda') | regex_replace('^/dev/', '')]['size'] | default('100 GB', true) }}"
-        
-        # PURE AUTOMATED PROBE: Scans chassis, CPU suffix [UMH], Core 2 Duo, or generic 'Mobile' tags safely without hardcoding
         computed_desktop_flag: >-
           {{
             true if (
@@ -122,7 +119,6 @@
             4096
           }}
 
-    # FIXED: Summary Recon block is moved up so it prints out your scanned metrics FIRST before prompting
     - name: "PHASE 1 | PROMPT | Display Discovered System Topography Metrics"
       ansible.builtin.debug:
         msg:
@@ -141,7 +137,6 @@
           - " >>> SUGGESTED VAULT LIMITS: 5 GB to {{ vault_max_suggested | default(10, true) }} GB max."
           - " >>> CALCULATED HARDENED SWAP SPACE FOOTPRINT: {{ computed_swap_mb | default(4096, true) }} MB."
           - "============================================================"
-
     - name: "PHASE 1 | PROMPT | Select Target Architecture Layout Standard"
       ansible.builtin.pause:
         prompt: |
@@ -152,6 +147,7 @@
           ============================================================
           [?] Enter selection number (1 or 2) [Default: 1]
       register: layout_style_prompt
+
     - name: "PHASE 1 | PROMPT | Gather unique system hostname identity"
       ansible.builtin.pause:
         prompt: "[?] Enter unique system hostname [fortress-node]"
@@ -168,7 +164,6 @@
         echo: false
       register: os_pass_prompt
 
-    # FIXED: The GRUB prompt matches your exact architectural rule: Only invokes on Fortress (2) profiles
     - name: "PHASE 1 | PROMPT | Gather GRUB menu hash lockout key"
       ansible.builtin.pause:
         prompt: "Enter Hashed Protection Password for GRUB parameters (Used in FORTRESS setup)"
@@ -290,7 +285,7 @@
       become: true
       when: "not ansible_check_mode"
     # =========================================================================
-    # PHASE 4 & 5 | CRYPTO LOOP LAYERS AND DEPENDENCY-SORTED WORKSPACE MOUNTING
+    # PHASE 4 & 5 | CRYPTO LOOP LAYERS AND STORAGE POOL INITIALIZATIONS
     # =========================================================================
     - name: "PHASE 3 | LUKS | Map system partition layout node targets"
       ansible.builtin.set_fact:
@@ -316,6 +311,7 @@
       register: os_partition_uuid
       become: true
       when: "not ansible_check_mode"
+
     - name: "PHASE 5 | BTRFS | Initialize storage filesystem pool"
       ansible.builtin.shell: "mkfs.btrfs -f /dev/mapper/{{ os_crypt_name }}"
       become: true
@@ -325,7 +321,6 @@
       ansible.builtin.command: "mount /dev/mapper/{{ os_crypt_name }} /mnt"
       become: true
       when: "not ansible_check_mode"
-
     - name: "PHASE 5 | STORAGE | Carve full 13-subvolume system hierarchy layout"
       ansible.builtin.command: "btrfs subvolume create /mnt/{{ item.name }}"
       loop: "{{ active_blueprint.subvolumes }}"
@@ -342,6 +337,7 @@
       become: true
       failed_when: false
       when: "not ansible_check_mode"
+
     - name: "PHASE 5 | STORAGE | Enforce clean installation target path folders"
       ansible.builtin.file:
         path: "/mnt/target"
@@ -375,7 +371,7 @@
       become: true
       when: "not ansible_check_mode"
     # =========================================================================
-    # PHASE 6 & 7 | HARDENED ISOLATED MEMORY STORAGE & BASELINE EXPANSION
+    # PHASE 6 | SWAP ARCHITECTURE LAYERING METRICS
     # =========================================================================
     - name: "PHASE 6 | STORAGE | Initialize baseline swapfile path tracking bounds"
       ansible.builtin.file:
@@ -411,38 +407,28 @@
       ansible.builtin.command: "swapon /mnt/target/swap/swapfile"
       become: true
       when: "not ansible_check_mode"
+    # =========================================================================
+    # PHASE 7 | BOOTSTRAP | Provision hardware-ready system packages cleanly
+    # =========================================================================
     - name: "PHASE 7 | BOOTSTRAP | Provision hardware-ready system packages cleanly"
       ansible.builtin.shell: |
         CORE_NET_SEC=""
         HARDWARE_PKGS=""
         SYS_TYPE="{{ system_profile }}"
-
-        # =========================================================================
-        # PRE-FLIGHT INTERFACE: MULTI-DISTRO NATIVE KEYRING & UTILITY REFRESH
-        # =========================================================================
-        echo "[+] Initializing pre-flight cryptographic keys and partition wiping engines..."
-        
         if [ "{{ ansible_facts['os_family'] }}" = "Archlinux" ]; then
           pacman-key --init || true
           pacman-key --populate archlinux || true
           pacman -Sy --noconfirm archlinux-keyring gptfdisk || true
-          
         elif [ "{{ ansible_facts['os_family'] }}" = "Debian" ]; then
           apt-get update -y || true
           apt-get install -y debian-archive-keyring gdisk || true
-          
         elif [ "{{ ansible_facts['os_family'] }}" = "RedHat" ]; then
           dnf check-update -y || true
           dnf install -y fedora-repos gdisk --nogpgcheck || true
-          
         elif [ "{{ ansible_facts['os_family'] }}" = "Suse" ]; then
           zypper --non-interactive refresh || true
           zypper --non-interactive install --no-recommends openSUSE-release gptfdisk || true
         fi
-
-        # =========================================================================
-        # CONDITION: LAPTOP ENVIRONMENT SPECIFICS
-        # =========================================================================
         if [ "$SYS_TYPE" = "laptop" ]; then
           if [ "{{ ansible_facts['os_family'] }}" = "Archlinux" ]; then
             CORE_NET_SEC="networkmanager firewalld"
@@ -457,10 +443,6 @@
             CORE_NET_SEC="NetworkManager firewalld"
             HARDWARE_PKGS="xorg-x11 gdm lightdm bluez pipewire pipewire-pulseaudio power-profiles-daemon cups firejail firetools firewall-applet firewall-config"
           fi
-
-        # =========================================================================
-        # CONDITION: FIXED DESKTOP ENVIRONMENT SPECIFICS
-        # =========================================================================
         elif [ "$SYS_TYPE" = "desktop" ]; then
           if [ "{{ ansible_facts['os_family'] }}" = "Archlinux" ]; then
             CORE_NET_SEC="networkmanager firewalld"
@@ -475,19 +457,13 @@
             CORE_NET_SEC="NetworkManager firewalld"
             HARDWARE_PKGS="xorg-x11 gdm lightdm bluez pipewire pipewire-pulseaudio tuned cups firejail firewall-applet firewall-config"
           fi
-
-        # =========================================================================
-        # CONDITION: BARE-METAL HEADLESS SERVERS
-        # =========================================================================
         else
           if [ "{{ ansible_facts['os_family'] }}" = "Archlinux" ]; then CORE_NET_SEC="networkmanager firewalld"; HARDWARE_PKGS="tuned irqbalance openssh"; fi
           if [ "{{ ansible_facts['os_family'] }}" = "Debian" ]; then CORE_NET_SEC="network-manager firewalld"; HARDWARE_PKGS="tuned-utils irqbalance openssh-server"; fi
           if [ "{{ ansible_facts['os_family'] }}" = "RedHat" ]; then CORE_NET_SEC="NetworkManager firewalld"; HARDWARE_PKGS="tuned irqbalance openssh-server"; fi
           if [ "{{ ansible_facts['os_family'] }}" = "Suse" ]; then CORE_NET_SEC="NetworkManager firewalld"; HARDWARE_PKGS="tuned irqbalance openssh"; fi
         fi
-
         BASE_UTIL="git make curl wget sudo btrfs-progs cryptsetup parted"
-
         if [ "{{ ansible_facts['os_family'] }}" = "Archlinux" ]; then
           pacstrap -K /mnt/target {{ active_blueprint.bootstrap_packages }} $BASE_UTIL $CORE_NET_SEC $HARDWARE_PKGS python python-pip
         elif [ "{{ ansible_facts['os_family'] }}" = "Debian" ]; then
@@ -519,10 +495,10 @@
         mode: "0700"
       become: true
       when: "not ansible_check_mode and has_vault | bool"
+
     - name: "PHASE 8 | VAULT | Generate hidden random 32-byte cryptographically secure token"
       ansible.builtin.command: "dd if=/dev/urandom of=/mnt/target/etc/secure/vault.key bs=1 count=32"
       become: true
-      # FIXED: Erased the corrupted 'gigs to secure' syntax string cleanly
       when: "not ansible_check_mode and has_vault | bool"
 
     - name: "PHASE 8 | VAULT | Lock system key signatures strictly to root privileges"
@@ -555,6 +531,7 @@
       ansible.builtin.shell: "mkfs.btrfs -f /dev/mapper/{{ vault_crypt_name }}"
       become: true
       when: "not ansible_check_mode and has_vault | bool"
+
     - name: "PHASE 8 | VAULT | Pre-carve required Btrfs secure vault subvolume tree root"
       ansible.builtin.shell: "mkdir -p /mnt/@vault_holder_tmp && mount /dev/mapper/{{ vault_crypt_name }} /mnt/@vault_holder_tmp && btrfs subvolume create /mnt/@vault_holder_tmp/@secure && umount /mnt/@vault_holder_tmp && rm -rf /mnt/@vault_holder_tmp"
       become: true
@@ -628,7 +605,7 @@
       become: true
       when: "not ansible_check_mode and has_vault | bool"
     # =========================================================================
-    # PHASE 9 | CHROOT LEDGERS CONTEXT, KERNEL COMPILING & TEARDOWN
+    # PHASE 9 | SYSTEM LEDGER ARCHITECTURE CONFIGURATION
     # =========================================================================
     - name: "PHASE 9 | CHROOT | Bind peripheral API kernel filesystems into environment framework"
       ansible.builtin.command: "mount --bind {{ item.src }} /mnt/target{{ item.path }}"
@@ -676,6 +653,7 @@
         mode: "0644"
       become: true
       when: "not ansible_check_mode"
+
     - name: "PHASE 9 | SYSTEM CONFIG | Map target encryption unlock keys (/etc/crypttab)"
       ansible.builtin.copy:
         content: |
@@ -690,7 +668,9 @@
         mode: "0440"
       become: true
       when: "not ansible_check_mode"
-
+    # =========================================================================
+    # PHASE 10 | CHROOT BASE ORCHESTRATION AND HOOK INJECTIONS
+    # =========================================================================
     - name: "PHASE 10 | CHROOT | Build configuration macros based on target profile architecture"
       ansible.builtin.set_fact:
         chroot_prefix: "{{ 'arch-chroot /mnt/target' if ansible_facts['os_family'] == 'Archlinux' else 'chroot /mnt/target' }}"
@@ -707,6 +687,7 @@
       ansible.builtin.shell: "if [ '{{ is_uefi | bool }}' = 'true' ]; then {{ chroot_prefix }} grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB --recheck; else {{ chroot_prefix }} grub-install --target=i386-pc {{ target_disk }} --recheck; fi"
       become: true
       when: "not ansible_check_mode"
+
     - name: "PHASE 10 | BOOTLOADER PASSWORD | Enforce restrictions on the plain boot text matrix"
       ansible.builtin.blockinfile:
         path: "/mnt/target/etc/grub.d/40_custom"
@@ -737,6 +718,7 @@
       become: true
       failed_when: false
       when: "not ansible_check_mode and is_fortress | bool"
+
     - name: "PHASE 10 | SNAPPER CONFIG | Align boot configuration lookup metrics"
       ansible.builtin.lineinfile:
         path: "/mnt/target/etc/default/grub-btrfs/config"
@@ -826,6 +808,7 @@
         echo "plugins=1" >> /mnt/target/etc/dnf/dnf.conf || true
       become: true
       when: "ansible_facts['os_family'] == 'RedHat' and not ansible_check_mode"
+
     - name: "PHASE 10 | SYSTEM SERVICES | Enable system daemon loops natively"
       ansible.builtin.shell: |
         {{ chroot_prefix }} systemctl enable NetworkManager || true
@@ -834,7 +817,6 @@
         {{ chroot_prefix }} systemctl enable tuned || true
         
         SYS_TYPE="{{ system_profile }}"
-
         if [ "$SYS_TYPE" = "laptop" ]; then
           {{ chroot_prefix }} systemctl enable bluetooth || true
           {{ chroot_prefix }} systemctl enable cups || true
@@ -848,7 +830,6 @@
             {{ chroot_prefix }} systemctl mask tlp || true
             {{ chroot_prefix }} systemctl enable power-profiles-daemon || true
           fi
-
         elif [ "$SYS_TYPE" = "desktop" ]; then
           {{ chroot_prefix }} systemctl enable bluetooth || true
           {{ chroot_prefix }} systemctl enable cups || true
@@ -857,7 +838,6 @@
           {{ chroot_prefix }} systemctl mask tlp || true
           {{ chroot_prefix }} systemctl mask power-profiles-daemon || true
           echo "desktop" > /mnt/target/etc/tuned/active_profile || true
-
         else
           {{ chroot_prefix }} systemctl mask power-profiles-daemon || true
           {{ chroot_prefix }} systemctl mask tlp || true
@@ -867,6 +847,7 @@
         fi
       become: true
       when: "not ansible_check_mode"
+
     - name: "PHASE 10 | INITRAMFS | Inject crypto modules and compile runtime kernel image hooks"
       ansible.builtin.shell: |
         if [ "{{ ansible_facts['os_family'] }}" = "Archlinux" ]; then
@@ -876,7 +857,9 @@
           {{ chroot_prefix }} mkinitcpio -P
         elif [ "{{ ansible_facts['os_family'] }}" = "Debian" ]; then
           mkdir -p /mnt/target/etc/cryptsetup-initramfs
-          if ! grep -q "btrfs" /mnt/target/etc/initramfs-tools/modules; then echo "btrfs" >> /mnt/target/etc/initramfs-tools/modules; fi
+          if ! grep -q "btrfs" /mnt/target/etc/initramfs-tools/modules; then 
+            echo "btrfs" >> /mnt/target/etc/initramfs-tools/modules
+          fi
           echo "CRYPTSETUP=y" >> /mnt/target/etc/cryptsetup-initramfs/conf-hook
           {{ chroot_prefix }} update-initramfs -u -k all
         elif [ "{{ ansible_facts['os_family'] }}" = "RedHat" ]; then
@@ -913,6 +896,7 @@
         fi
       become: true
       when: "not ansible_check_mode"
+
     # =========================================================================
     # PHASE 11 & 12 | USER AND CLEANUP TARGET DEPLOYMENT PIPELINE
     # =========================================================================
@@ -943,6 +927,56 @@
         owner: "root"
         group: "root"
         mode: "0644"
+      become: true # 🫵 THE FIX: GRANTS PRIVILEGE ELEVATION TO PASS CHECK MODE
+    # =========================================================================
+    # SYSTEM PROVENANCE | FIXED STORAGE BLUEPRINT IDENTITY CERTIFICATE
+    # =========================================================================
+
+    - name: "PROVENANCE | Drop Medardo Vega Stage-1 Certified Baseline Footprint"
+      ansible.builtin.copy:
+        dest: "/mnt/target/etc/zero-trust-baseline.json"
+        content: |
+          {
+            "system_verification_badge": "STAGE-1-CERTIFIED",
+            "framework_provenance": {
+              "chief_architect": "Medardo Vega",
+              "project_profile_signature": "https://github.com",
+              "professional_title": "Self-Taught Linux Systems & SecOps Infrastructure Engineer"
+            },
+            "immutable_architecture_metrics": {
+              "security_profile_tier": "PENTAGON",
+              "storage_blueprint": "LUKS2-Encrypted-Btrfs-Topology"
+            }
+          }
+        mode: '0600'
+        owner: root
+        group: root
+      # 🫵 THE DRY-RUN SHIELD: Fences off execution during check mode passes to maintain blueprint integrity
+      when: "not ansible_check_mode"
+
+    # =========================================================================
+    # SYSTEM PROVENANCE | FIXED STORAGE BLUEPRINT IDENTITY CERTIFICATE
+    # =========================================================================
+    - name: "PROVENANCE | Drop Medardo Vega Stage-1 Certified Baseline Footprint"
+      ansible.builtin.copy:
+        dest: "/mnt/target/etc/zero-trust-baseline.json"
+        content: |
+          {
+            "system_verification_badge": "STAGE-1-CERTIFIED",
+            "framework_provenance": {
+              "chief_architect": "Medardo Vega",
+              "project_profile_signature": "https://github.com",
+              "engineering_phase": "Stage 1 Bare-Metal Partition Slicing & Storage Cryptographic Infrastructure"
+            },
+            "immutable_architecture_metrics": {
+              "security_profile_tier": "PENTAGON",
+              "storage_blueprint": "LUKS2-Encrypted-Btrfs-Topology"
+            }
+          }
+        mode: '0600'
+        owner: root
+        group: root
+      when: "not ansible_check_mode"
 
     - name: "LOGGING | Output ultimate security baseline status matrix card"
       ansible.builtin.debug:
@@ -952,6 +986,11 @@
           - "==========================================================================="
           - "[✔] SUCCESS: Stage#1 Successfully Deployed!"
           - ""
+          - "💎 SYSTEM PROVENANCE INFRASTRUCTURE ATTESTATION:"
+          - "    ➔ CHIEF FRAMEWORK ARCHITECT..: Medardo Vega"
+          - "    ➔ PROFESSIONAL TITLE.........: Self-Taught Linux Systems & SecOps Infrastructure Engineer"
+          - "    ➔ AUTHORITATIVE SOURCE PATH..: https://github.com"
+          - "==========================================================================="
           - "🛡️ CRYPTOGRAPHIC CONTAINER STORAGE STATUS:"
           - "    Your devices are now fully encrypted and locked behind Argon2id pools:"
           - "    ➔ PRIMARY OPERATING SYSTEM VOLUME: {{ target_disk | default('/dev/sda', true) }} (Encrypted Container)"
@@ -963,17 +1002,7 @@
           - "---------------------------------------------------------------------------"
           - "                       RECOMMENDED NEXT LIFECYCLE STEP                     "
           - "---------------------------------------------------------------------------"
-          - " [!] NOTICE: Your foundational storage substrate is completely secure,     "
-          - "     but the operating system userland is currently running unshielded.    "
-          - ""
-          - " 💡 SUGGESTION: Stack this architecture baseline with Stage#2 for full     "
-          - "    system hardening! Passing control cleanly to Stage 2 will deploy:      "
-          - "    ➔ Low-Level Kernel Runtime Parameter Shielding (sysctl restrictions)   "
-          - "    ➔ Advanced Userland Application Containment (Firejail Sandbox Vectors) "
-          - "    ➔ Host Intrusion Auditing & Real-time Integrity Traps (auditd & AIDE)  "
-          - "    ➔ Zero-Trust Packet Inspection Network Rule-sets (firewalld controls)  "
-          - ""
-          - " Run the next envelope phase via: ansible-playbook Stage#2-Post-Hardening.yml   "
+          - " Run the next envelope phase via: ansible-playbook Stage#2-Post-Hardening.yml"
           - "==========================================================================="
       when: "not ansible_check_mode"
         
