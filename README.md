@@ -1,69 +1,64 @@
-### Universal Interactive Turn-Key Linux Pre-Hardening Framework (Stage 1)
+# 🛠️ Universal Multi-Distro Linux Pre-Hardening Framework (Stage 1)
 
-A foundational system orchestration framework designed to deploy an advanced, fully encrypted base storage architecture prior to applying active host-hardening policies. This framework guarantees raw partition security, builds optimized volume management layers, and prepares the operational substrate across **Arch Linux**, **Debian**, **Fedora**, and **openSUSE** deployment targets. 
+**Framework Architect:** Medardo Vega  
+**Professional Title:** Self-Taught Linux Systems & SecOps Infrastructure Engineer  
+**Profile Provenance:** [://github.com](https://://github.com)  
+**Infrastructure Blueprint Standard:** PENTAGON LEVEL / FORTRESS SETUP TIER  
 
-### 🚀 Purpose & Architecture
+---
 
-This framework establishes physical and foundational data security from a clean slate or fresh install scenario. It focuses strictly on storage layout containment, cryptographic volume constraints, and system bootstrap preparation. 
+## ⚡ Core Operational Strategy
 
-### Core Foundation Layers
+This repository houses the bare-metal bootstrap engine of the framework. Stage 1 operates entirely within live installation mediums or external deployment environments to carve out an un-falsifiable, cryptographically secured operating system foundation before the first system boot.
 
-* **Layer 1: Partition & Hard Drive Layout** — Structures raw hardware devices, establishing primary, boot, and extended operational boundaries cleanly.
-* **Layer 2: Cryptographic Containerization (LUKS)** — Provisions robust, full-disk encryption algorithms (utilizing argon2id iterations) to safeguard raw data layers from physical extraction attempts.
-* **Layer 3: Logical Volume Management (LVM)** — Abstracts the underlying encrypted space into isolated, dynamically resizable volume pools to optimize resource tracking.
-* **Layer 4: Advanced Subvolume Hierarchy** — Establishes secure storage containment parameters, including granular tracking paths like @secure=/vault for absolute host containment.
-* **Layer 5: Hybrid Memory Allocation** — Calculates and mounts standardized system swap layers aligned with custom biometric guidelines (RAM < 8GB maps to RAM × 2; RAM ≥ 8GB maps to RAM × 1.5).
+By translating manual, terminal-level systems engineering victories into automated Infrastructure-as-Code (IaC), this framework eliminates configuration drift and establishes immediate storage boundaries across **Arch Linux, Debian, Fedora, and openSUSE Tumbleweed**.
 
-### 📋 System Blueprint & Storage Layout
+---
 
-Stage 1 maps out strict partition boundaries on physical hardware arrays (e.g., your primary hard drive /dev/sda) to balance boot validation compatibility with data isolation rules: 
+## 🧱 Architectural Hardening Capabilities
 
-### Standard Hardware Allocation
+Stage 1 executes an aggressive, multi-layered partitioning and cryptographic strategy from the outside in:
 
-1. **/dev/sda1 (Secure Boot Bootloader)** — A 1GB standalone, password-protected /boot layout paired with custom bootloader markers (grub-mkpasswd) for structural authentication.
-2. **/dev/sda2 (Encrypted Core Partition)** — The primary workspace containing an encapsulated LUKS container which unifies your system volumes, subvolumes, and swap assets under a single master boot passphrase challenge.
-3. **/dev/sda3 (Sensitive Data Vault)** — An optional, completely detached 30GB storage vault or secondary partition block dedicated entirely to containing independent cryptographic keys and high-security file trees.
+* **Cryptographic Boundary Containment:** Wraps core system partitions inside high-security **LUKS2 containers** driven by hardware-optimized **Argon2id** key-derivation functions.
+* **13-Subvolume Btrfs Storage Pool:** Slices your root filesystem pool into a complex, independent subvolume tree (including specialized `@swap`, `@log`, and `@cache` tracking targets) to isolate volatile data directories and stop local denial-of-service/storage exhaustion vectors natively.
+* **Hidden Data Vault Controller:** Provisions an independent, encrypted secondary data partition mapped directly via a root-only random 32-byte keyfile signature (`/etc/secure/vault.key`). This features an automated mult-mount proof utility script (`vault open` / `vault close`) to ensure sensitive storage arrays are completely sealed from memory when not in use.
+* **The Convenience Boot Guard:** Configures the system bootloader with an advanced `--unrestricted` class patch. Standard, day-to-day boot operations remain frictionless and prompt-free for authorized users, while manual kernel parameter manipulation attempts (`e`) are instantly locked by an administrative password wall.
+* **Volatile Memory Optimization:** Automatically provisions a kernel-level compressed **LZ4 ZRAM storage pool** to prevent memory thrashing under heavy engineering workloads.
+* **The Provenance Token Manifest:** Staps a permanent, machine-readable JSON certificate directly onto the encrypted drive blocks (`/etc/zero-trust-baseline.json`). This footprint authenticates your identity, professional title, and case-sensitive repository path before the partition tables are unmounted.
 
-### 🛠️ Usage & Verification Protocols
+---
 
-### Privilege Escalation Requirement
+## 📊 Post-Install Verification & Posture Grading
 
-Because this framework orchestrates low-level storage modifications natively on localhost, **you must append the --ask-become-pass (or -K) flag** to every execution command. This explicitly satisfies your local host runner's sudo privileges independently from the interactive asset passphrases gathered inside the playbook task loop. Recent versions of the Ansible core engine enforce strict process detachment when executing locally, meaning cached host credentials are bypassed. 
+The accompanying validation playbook (`Stage#1-Verification.yml`) functions as your continuous compliance auditor. It executes live shell scans directly against the hardware to verify that raw partition blocks and cryptographic signatures match your exact blueprint standard, automatically assigning a maturity ranking:
 
-### 1. Pre-Flight Storage Check (Simulation Mode)
+* **🥉 BRONZE LEVEL (FOUNDATION HARDENING ACTIVE):** Triggered when the validation engine successfully probes your raw disk blocks, matches the active `cryptroot` volume loop, and parses your verified `DlaVega504` identity token on the drive.
+* **🥉 BRONZE LEVEL (FOUNDATION SIMULATION PASS):** Unlocked automatically during dry runs. It leverages built-in syntax simulation filters to validate code layout paths without risking state pollution on your host.
 
-Before simulating block modifications or initializing filesystems on raw hardware devices, validate playbook structural paths, drive identification strings, and variable logic arrays: 
+---
 
-bash
+## 🛠️ Verified Engineering Toolkit
 
-ansible-playbook -i hosts.ini Universal-Linux-PreHardening.yml --check --ask-become-pass --skip-tags=integrity
+This framework is built upon a foundations of deep Linux internals combined with real-world operational security and offensive auditing tools:
 
-Use code with caution.
+* **Hardening & Storage Tools:** Btrfs Subvolume Architectures, LUKS1/LUKS2 Container Management, Snapper IaC Baseline Transaction Recovery Hooks, Systemd Core Units.
+* **Automation Infrastructure:** Ansible Core, Jinja2 Variable Synthesis, Bash Automation Shell Wrappers (`deploy.sh`).
+* **SecOps Auditing Foundations:** Wireless network boundary auditing (packet capturing, 4-way handshake manipulation, and hash decryption using `mdk4`, `aircrack-ng`, `hashcat`), web application authentication vulnerabilities (`wpscan` user enumeration and credential brute-forcing), and local mapping via `nmap`.
 
-* *Caution: Dry-running tasks that manage raw disks or disk partitioning configurations will skip underlying filesystem writes, allowing safe structure parsing checks before commit loops.*
+---
 
-### 2. Live Bootstrapping Initialization
+## 🚀 Execution and Pre-Flight Validation Strings
 
-To permanently commit partition sectors, execute cryptographic containerization scripts, and mount target filesystem hierarchies on deployment hosts: 
+Both playbooks feature absolute check-mode fencing. Test your deployment files with zero risk to your live environment using these exact command strings:
 
-bash
+```bash
+# Execute Dry-Run Syntax Pass for the Stage 1 Installation Blueprint
+ansible-playbook -i hosts Stage#1-Pre-Hardening.yml --check -K
 
-ansible-playbook -i hosts.ini Universal-Linux-PreHardening.yml --ask-become-pass
+# Execute Dry-Run Simulation Pass for the Stage 1 Post-Install Auditor
+ansible-playbook -i hosts Stage#1-Verification.yml --check -K
+```
 
-Use code with caution.
+---
+*“The ultimate test of knowledge isn't a classroom certificate—it's production-grade code that works when the system is under pressure.”*
 
-### 📋 Interactive Prompt Input Sequence
-
-When you launch the command script, your terminal window will process input strings in this exact chronological matrix: 
-
-1. **BECOME password:** Enter your **local executing machine's standard sudo password** to unlock the process loop.
-2. **[?] Enter target disk...** Input your physical block storage identifier path (e.g., /dev/sda).
-3. **[?] Enter secure vault sizing...** Input the target size parameter for the decoupled data vault.
-4. **Secure Hidden Prompts:** Provide your newly desired LUKS passphrases, root credentials, and target user account data. The terminal will intentionally suppress mirroring your typed characters or cursor movements for absolute security.
-
-### 🔄 Next Steps in the Lifecycle
-
-Once Stage 1 successfully completes and verifies your baseline storage encryption architecture, the system is prepared to pass control cleanly onto the next phase of deployment: 
-
-* **Stage 1 (This Step):** Physical boundary layout, LUKS container construction, and volume mapping.
-* **Stage 2 (Next Step):** Automated execution of your **Universal Zero-Trust Linux Hardening Framework** to apply kernel optimization baselines, host daemon shielding, and defensive system configurations.
